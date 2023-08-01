@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="PYTHON_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/raw_data/CHIBike" />
+      <excludeFolder url="file://$MODULE_DIR$/raw_data/NYCTaxi" />
+      <excludeFolder url="file://$MODULE_DIR$/raw_data/PeMS04" />
+      <excludeFolder url="file://$MODULE_DIR$/raw_data/PeMS07" />
+      <excludeFolder url="file://$MODULE_DIR$/raw_data/PeMS08" />
+      <excludeFolder url="file://$MODULE_DIR$/raw_data/PeMSD7M" />
+      <excludeFolder url="file://$MODULE_DIR$/raw_data/T-Drive" />
+      <excludeFolder url="file://$MODULE_DIR$/raw_data/__PreProcessOutput" />
+    </content>
+    <orderEntry type="jdk" jdkName="libcity" jdkType="Python SDK" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>
