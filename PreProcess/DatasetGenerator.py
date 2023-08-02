@@ -75,13 +75,9 @@ class IncrementalDataGenerator:
         dyna_stage_1 = self.fullDyna.copy(deep=True)
         dyna_stage_2 = self.fullDyna.copy(deep=True)
         # Spatial shrink
-        dyna_stage_1.drop([i for i, x in enumerate(dyna_stage_1.entity_id) if x not in baseIndices], inplace=True)
-        # Reset idx for modified dyna_st_1
-        dyna_stage_1 = dyna_stage_1.reset_index()
-        dyna_stage_1["dyna_id"] = dyna_stage_1.index
-        # Temporal shrink 2017-05-01T00:00:00Z
-        dyna_stage_1.drop([i for i, t in enumerate(dyna_stage_1.time) if
-                           datetime.strptime(t, "%Y-%m-%dT%H:%M:%SZ") > self.timeBoundary], inplace=True)
+        dyna_stage_1.drop([i for i, x in enumerate(zip(dyna_stage_1.entity_id, dyna_stage_1.time))
+                           if (x[0] not in baseIndices) or
+                           (datetime.strptime(x[1], "%Y-%m-%dT%H:%M:%SZ") > self.timeBoundary)], inplace=True)
         dyna_stage_2.drop([i for i, t in enumerate(dyna_stage_2.time) if
                            datetime.strptime(t, "%Y-%m-%dT%H:%M:%SZ") <= self.timeBoundary], inplace=True)
         # Reset Idx

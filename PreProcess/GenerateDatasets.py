@@ -140,5 +140,5 @@ def genPeMS08():
 if __name__ == "__main__":
     # genPeMS03()
     genPeMS04()
-    # genPeMS07()
+    genPeMS07()
     genPeMS08()

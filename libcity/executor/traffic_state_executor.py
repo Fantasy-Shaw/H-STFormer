@@ -2,34 +2,42 @@ import os
 import time
 import numpy as np
 import torch
+
 from ray import tune
 from logging import getLogger
 from torch.utils.tensorboard import SummaryWriter
+from torch.nn.parallel import DistributedDataParallel as NativeDDP
 from libcity.executor.abstract_executor import AbstractExecutor
-from libcity.utils import get_evaluator, ensure_dir
+from libcity.utils import get_evaluator, ensure_dir, reduce_array
 from libcity.model import loss
 from functools import partial
 
 
 class TrafficStateExecutor(AbstractExecutor):
-    def __init__(self, config, model, data_feature):
+    def __init__(self, config, model):
         self.evaluator = get_evaluator(config)
         self.config = config
-        self.data_feature = data_feature
         self.device = self.config.get('device', torch.device('cpu'))
         self.model = model.to(self.device)
         self.exp_id = self.config.get('exp_id', None)
 
         self.cache_dir = './libcity/cache/{}/model_cache'.format(self.exp_id)
         self.evaluate_res_dir = './libcity/cache/{}/evaluate_cache'.format(self.exp_id)
-        self.summary_writer_dir = './libcity/cache/{}/'.format(self.exp_id)
+        self.summary_writer_dir = './libcity/cache/{}'.format(self.exp_id)
         ensure_dir(self.cache_dir)
         ensure_dir(self.evaluate_res_dir)
         ensure_dir(self.summary_writer_dir)
 
         self._writer = SummaryWriter(self.summary_writer_dir)
         self._logger = getLogger()
-        self._scaler = self.data_feature.get('scaler')
+        self._scaler = self.model.get_data_feature().get('scaler')
+        self.rank = self.config.get('rank', 0)
+        self.distributed = self.config.get('distributed', False)
+        if self.distributed:
+            self.world_size = self.config.get('world_size', 1)
+            self._logger.info("Using native Torch DistributedDataParallel.")
+            local_rank = self.config.get('local_rank', 0)
+            self.model = NativeDDP(self.model, device_ids=[local_rank])
         self._logger.info(self.model)
         for name, param in self.model.named_parameters():
             self._logger.info(str(name) + '\t' + str(param.shape) + '\t' +
@@ -39,6 +47,7 @@ class TrafficStateExecutor(AbstractExecutor):
 
         self.epochs = self.config.get('max_epoch', 100)
         self.train_loss = self.config.get('train_loss', 'none')
+        self.train_loss = 'none'
         self.learner = self.config.get('learner', 'adam')
         self.learning_rate = self.config.get('learning_rate', 0.01)
         self.weight_decay = self.config.get('weight_decay', 0)
@@ -75,36 +84,42 @@ class TrafficStateExecutor(AbstractExecutor):
             self.load_model_with_epoch(self._epoch_num)
         self.loss_func = self._build_train_loss()
 
-    def save_model(self, cache_name):
-        """
-        将当前的模型保存到文件
+        self.initial_ckpt = self.config.get("initial_ckpt", None)
+        if self.initial_ckpt:
+            self.load_model_with_initial_ckpt(self.initial_ckpt)
+        self.grad_accmu_steps = config.get('grad_accmu_steps', 1)
+        self.optimizer.zero_grad()
 
-        Args:
-            cache_name(str): 保存的文件名
-        """
+    def load_model_with_initial_ckpt(self, initial_ckpt):
+        assert os.path.exists(initial_ckpt), 'Weights at %s not found' % initial_ckpt
+        model_state, optimizer_state = torch.load(initial_ckpt, map_location=torch.device('cpu'))
+        model_keys = self.model.state_dict()
+        state_dict_load = {}
+        unexpect_keys = []
+        for k, v in model_state.items():
+            if k not in model_keys.keys() or v.shape != model_keys[k].shape:
+                unexpect_keys.append(k)
+            else:
+                state_dict_load[k] = v
+        for k, v in model_keys.items():
+            if k not in model_state.keys():
+                unexpect_keys.append(k)
+        self._logger.info("unexpected keys: {}".format(unexpect_keys))
+        self.model.load_state_dict(state_dict_load, strict=False)
+        self._logger.info("Initialize model from {}".format(initial_ckpt))
+
+    def save_model(self, cache_name):
         ensure_dir(self.cache_dir)
         self._logger.info("Saved model at " + cache_name)
         torch.save((self.model.state_dict(), self.optimizer.state_dict()), cache_name)
 
     def load_model(self, cache_name):
-        """
-        加载对应模型的 cache
-
-        Args:
-            cache_name(str): 保存的文件名
-        """
         self._logger.info("Loaded model at " + cache_name)
         model_state, optimizer_state = torch.load(cache_name)
         self.model.load_state_dict(model_state)
         self.optimizer.load_state_dict(optimizer_state)
 
     def save_model_with_epoch(self, epoch):
-        """
-        保存某个epoch的模型
-
-        Args:
-            epoch(int): 轮数
-        """
         ensure_dir(self.cache_dir)
         config = dict()
         config['model_state_dict'] = self.model.state_dict()
@@ -116,12 +131,6 @@ class TrafficStateExecutor(AbstractExecutor):
         return model_path
 
     def load_model_with_epoch(self, epoch):
-        """
-        加载某个epoch的模型
-
-        Args:
-            epoch(int): 轮数
-        """
         model_path = self.cache_dir + '/' + self.config['model'] + '_' + self.config['dataset'] + '_epoch%d.tar' % epoch
         assert os.path.exists(model_path), 'Weights at epoch %d not found' % epoch
         checkpoint = torch.load(model_path, map_location='cpu')
@@ -130,9 +139,6 @@ class TrafficStateExecutor(AbstractExecutor):
         self._logger.info("Loaded model at {}".format(epoch))
 
     def _build_optimizer(self):
-        """
-        根据全局参数`learner`选择optimizer
-        """
         self._logger.info('You select `{}` optimizer.'.format(self.learner.lower()))
         if self.learner.lower() == 'adam':
             optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate,
@@ -157,9 +163,6 @@ class TrafficStateExecutor(AbstractExecutor):
         return optimizer
 
     def _build_lr_scheduler(self):
-        """
-        根据全局参数`lr_scheduler`选择对应的lr_scheduler
-        """
         if self.lr_decay:
             self._logger.info('You select `{}` lr_scheduler.'.format(self.lr_scheduler_type.lower()))
             if self.lr_scheduler_type.lower() == 'multisteplr':
@@ -190,11 +193,6 @@ class TrafficStateExecutor(AbstractExecutor):
         return lr_scheduler
 
     def _build_train_loss(self):
-        """
-        根据全局参数`train_loss`选择训练过程的loss函数
-        如果该参数为none，则需要使用模型自定义的loss函数
-        注意，loss函数应该接收`Batch`对象作为输入，返回对应的loss(torch.tensor)
-        """
         if self.train_loss.lower() == 'none':
             self._logger.warning('Received none train loss func and will use the loss func defined in the model.')
             return None
@@ -241,30 +239,20 @@ class TrafficStateExecutor(AbstractExecutor):
         return func
 
     def evaluate(self, test_dataloader):
-        """
-        use model to test data
-
-        Args:
-            test_dataloader(torch.Dataloader): Dataloader
-        """
         self._logger.info('Start evaluating ...')
         with torch.no_grad():
             self.model.eval()
-            # self.evaluator.clear()
             y_truths = []
             y_preds = []
             for batch in test_dataloader:
                 batch.to_tensor(self.device)
-                output = self.model.predict(batch)
+                output = self.model(batch) if self.distributed else self.model.predict(batch)
                 y_true = self._scaler.inverse_transform(batch['y'][..., :self.output_dim])
                 y_pred = self._scaler.inverse_transform(output[..., :self.output_dim])
                 y_truths.append(y_true.cpu().numpy())
                 y_preds.append(y_pred.cpu().numpy())
-                # evaluate_input = {'y_true': y_true, 'y_pred': y_pred}
-                # self.evaluator.collect(evaluate_input)
-            # self.evaluator.save_result(self.evaluate_res_dir)
             y_preds = np.concatenate(y_preds, axis=0)
-            y_truths = np.concatenate(y_truths, axis=0)  # concatenate on batch
+            y_truths = np.concatenate(y_truths, axis=0)
             outputs = {'prediction': y_preds, 'truth': y_truths}
             filename = \
                 time.strftime("%Y_%m_%d_%H_%M_%S", time.localtime(time.time())) + '_' \
@@ -276,13 +264,6 @@ class TrafficStateExecutor(AbstractExecutor):
             return test_result
 
     def train(self, train_dataloader, eval_dataloader):
-        """
-        use data to train model with config
-
-        Args:
-            train_dataloader(torch.Dataloader): Dataloader
-            eval_dataloader(torch.Dataloader): Dataloader
-        """
         self._logger.info('Start training ...')
         min_val_loss = float('inf')
         wait = 0
@@ -292,19 +273,27 @@ class TrafficStateExecutor(AbstractExecutor):
         num_batches = len(train_dataloader)
         self._logger.info("num_batches:{}".format(num_batches))
 
+        batches_seen = num_batches * self._epoch_num
         for epoch_idx in range(self._epoch_num, self.epochs):
             start_time = time.time()
-            losses = self._train_epoch(train_dataloader, epoch_idx, self.loss_func)
+            losses, batches_seen = self._train_epoch(train_dataloader, epoch_idx, batches_seen, self.loss_func)
             t1 = time.time()
             train_time.append(t1 - start_time)
-            self._writer.add_scalar('training loss', np.mean(losses), epoch_idx)
+            train_loss = np.mean(losses)
+            if self.distributed:
+                train_loss = reduce_array(train_loss, self.world_size, self.device)
+            self._writer.add_scalar('training loss', np.mean(losses), batches_seen)
             self._logger.info("epoch complete!")
 
             self._logger.info("evaluating now!")
             t2 = time.time()
-            val_loss = self._valid_epoch(eval_dataloader, epoch_idx, self.loss_func)
+            val_loss = self._valid_epoch(eval_dataloader, epoch_idx, batches_seen, self.loss_func)
             end_time = time.time()
             eval_time.append(end_time - t2)
+
+            epoch_time = end_time - start_time
+            if self.distributed:
+                epoch_time = reduce_array(np.array(epoch_time), self.world_size, self.device)
 
             if self.lr_scheduler is not None:
                 if self.lr_scheduler_type.lower() == 'reducelronplateau':
@@ -314,16 +303,15 @@ class TrafficStateExecutor(AbstractExecutor):
 
             if (epoch_idx % self.log_every) == 0:
                 log_lr = self.optimizer.param_groups[0]['lr']
-                message = 'Epoch [{}/{}] train_loss: {:.4f}, val_loss: {:.4f}, lr: {:.6f}, {:.2f}s'.\
-                    format(epoch_idx, self.epochs, np.mean(losses), val_loss, log_lr, (end_time - start_time))
+                message = 'Epoch [{}/{}] ({}) train_loss: {:.4f}, val_loss: {:.4f}, lr: {:.6f}, {:.2f}s'.\
+                    format(epoch_idx, self.epochs, batches_seen, np.mean(losses), val_loss,
+                           log_lr, (end_time - start_time))
                 self._logger.info(message)
 
             if self.hyper_tune:
-                # use ray tune to checkpoint
                 with tune.checkpoint_dir(step=epoch_idx) as checkpoint_dir:
                     path = os.path.join(checkpoint_dir, "checkpoint")
                     self.save_model(path)
-                # ray tune use loss to determine which params are best
                 tune.report(loss=val_loss)
 
             if val_loss < min_val_loss:
@@ -340,53 +328,38 @@ class TrafficStateExecutor(AbstractExecutor):
                     self._logger.warning('Early stopping at epoch: %d' % epoch_idx)
                     break
         if len(train_time) > 0:
+            average_train_time = sum(train_time) / len(train_time)
+            average_eval_time = sum(eval_time) / len(eval_time)
+            if self.distributed:
+                average_train_time = reduce_array(average_train_time, self.world_size, self.device)
+                average_eval_time = reduce_array(average_eval_time, self.world_size, self.device)
             self._logger.info('Trained totally {} epochs, average train time is {:.3f}s, '
                               'average eval time is {:.3f}s'.
-                              format(len(train_time), sum(train_time) / len(train_time),
-                                     sum(eval_time) / len(eval_time)))
+                              format(len(train_time), average_train_time, average_eval_time))
         if self.load_best_epoch:
             self.load_model_with_epoch(best_epoch)
         return min_val_loss
 
-    def _train_epoch(self, train_dataloader, epoch_idx, loss_func=None):
-        """
-        完成模型一个轮次的训练
-
-        Args:
-            train_dataloader: 训练数据
-            epoch_idx: 轮次数
-            loss_func: 损失函数
-
-        Returns:
-            list: 每个batch的损失的数组
-        """
+    def _train_epoch(self, train_dataloader, epoch_idx, batches_seen=None, loss_func=None):
         self.model.train()
         loss_func = loss_func if loss_func is not None else self.model.calculate_loss
         losses = []
         for batch in train_dataloader:
-            self.optimizer.zero_grad()
             batch.to_tensor(self.device)
             loss = loss_func(batch)
             self._logger.debug(loss.item())
             losses.append(loss.item())
+            batches_seen += 1
+            loss = loss / self.grad_accmu_steps
             loss.backward()
             if self.clip_grad_norm:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
-            self.optimizer.step()
-        return losses
+            if batches_seen % self.grad_accmu_steps == 0:
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+        return losses, batches_seen
 
-    def _valid_epoch(self, eval_dataloader, epoch_idx, loss_func=None):
-        """
-        完成模型一个轮次的评估
-
-        Args:
-            eval_dataloader: 评估数据
-            epoch_idx: 轮次数
-            loss_func: 损失函数
-
-        Returns:
-            float: 评估数据的平均损失值
-        """
+    def _valid_epoch(self, eval_dataloader, epoch_idx, batches_seen=None, loss_func=None):
         with torch.no_grad():
             self.model.eval()
             loss_func = loss_func if loss_func is not None else self.model.calculate_loss
@@ -397,5 +370,7 @@ class TrafficStateExecutor(AbstractExecutor):
                 self._logger.debug(loss.item())
                 losses.append(loss.item())
             mean_loss = np.mean(losses)
-            self._writer.add_scalar('eval loss', mean_loss, epoch_idx)
+            if self.distributed:
+                mean_loss = reduce_array(mean_loss, self.world_size, self.device)
+            self._writer.add_scalar('eval loss', mean_loss, batches_seen)
             return mean_loss

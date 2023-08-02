@@ -8,18 +8,18 @@ def masked_mae_loss(y_pred, y_true):
     mask /= mask.mean()
     loss = torch.abs(y_pred - y_true)
     loss = loss * mask
-    # trick for nans:
-    # https://discuss.pytorch.org/t/how-to-set-nan-in-tensor-to-0/3918/3
     loss[loss != loss] = 0
     return loss.mean()
 
 
-def masked_mae_torch(preds, labels, null_val=np.nan):
+def masked_mae_torch(preds, labels, null_val=np.nan, mask_val=np.nan):
     labels[torch.abs(labels) < 1e-4] = 0
     if np.isnan(null_val):
         mask = ~torch.isnan(labels)
     else:
         mask = labels.ne(null_val)
+    if not np.isnan(mask_val):
+        mask &= labels.ge(mask_val)
     mask = mask.float()
     mask /= torch.mean(mask)
     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
@@ -40,8 +40,25 @@ def huber_loss(preds, labels, delta=1.0):
     small_res = 0.5 * torch.square(residual)
     large_res = delta * residual - 0.5 * delta * delta
     return torch.mean(torch.where(condition, small_res, large_res))
-    # lo = torch.nn.SmoothL1Loss()
-    # return lo(preds, labels)
+
+
+def masked_huber_loss(preds, labels, delta=1.0, null_val=np.nan):
+    labels[torch.abs(labels) < 1e-4] = 0
+    if np.isnan(null_val):
+        mask = ~torch.isnan(labels)
+    else:
+        mask = labels.ne(null_val)
+    mask = mask.float()
+    mask /= torch.mean(mask)
+    mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
+    residual = torch.abs(preds - labels)
+    condition = torch.le(residual, delta)
+    small_res = 0.5 * torch.square(residual)
+    large_res = delta * residual - 0.5 * delta * delta
+    loss = torch.where(condition, small_res, large_res)
+    loss = loss * mask
+    loss = torch.where(torch.isnan(loss), torch.zeros_like(loss), loss)
+    return torch.mean(loss)
 
 
 def quantile_loss(preds, labels, delta=0.25):
@@ -51,15 +68,14 @@ def quantile_loss(preds, labels, delta=0.25):
     return torch.mean(torch.where(condition, large_res, small_res))
 
 
-def masked_mape_torch(preds, labels, null_val=np.nan, eps=0):
+def masked_mape_torch(preds, labels, null_val=np.nan, mask_val=np.nan):
     labels[torch.abs(labels) < 1e-4] = 0
-    if np.isnan(null_val) and eps != 0:
-        loss = torch.abs((preds - labels) / (labels + eps))
-        return torch.mean(loss)
     if np.isnan(null_val):
         mask = ~torch.isnan(labels)
     else:
         mask = labels.ne(null_val)
+    if not np.isnan(mask_val):
+        mask &= labels.ge(mask_val)
     mask = mask.float()
     mask /= torch.mean(mask)
     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
@@ -69,12 +85,14 @@ def masked_mape_torch(preds, labels, null_val=np.nan, eps=0):
     return torch.mean(loss)
 
 
-def masked_mse_torch(preds, labels, null_val=np.nan):
+def masked_mse_torch(preds, labels, null_val=np.nan, mask_val=np.nan):
     labels[torch.abs(labels) < 1e-4] = 0
     if np.isnan(null_val):
         mask = ~torch.isnan(labels)
     else:
         mask = labels.ne(null_val)
+    if not np.isnan(mask_val):
+        mask &= labels.ge(mask_val)
     mask = mask.float()
     mask /= torch.mean(mask)
     mask = torch.where(torch.isnan(mask), torch.zeros_like(mask), mask)
@@ -84,10 +102,10 @@ def masked_mse_torch(preds, labels, null_val=np.nan):
     return torch.mean(loss)
 
 
-def masked_rmse_torch(preds, labels, null_val=np.nan):
+def masked_rmse_torch(preds, labels, null_val=np.nan, mask_val=np.nan):
     labels[torch.abs(labels) < 1e-4] = 0
     return torch.sqrt(masked_mse_torch(preds=preds, labels=labels,
-                                       null_val=null_val))
+                                       null_val=null_val, mask_val=mask_val))
 
 
 def r2_score_torch(preds, labels):
