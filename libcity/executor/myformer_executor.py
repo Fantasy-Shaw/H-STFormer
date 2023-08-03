@@ -6,11 +6,16 @@ from libcity.executor.scheduler import CosineLRScheduler
 from ray import tune
 from libcity.executor.traffic_state_executor import TrafficStateExecutor
 import scipy.sparse as sp
+
+from libcity.model.loss import masked_huber_loss
+from libcity.pipeline.pipeline import loss_st1_on_raw, loss_st1_on_incr, stage1_executor
+from libcity.pipeline.pipeline import s1_train_data, s1_test_data, s1_valid_data
 from libcity.utils import reduce_array
 from tqdm import tqdm
+import torch.nn.functional as F
 
 
-class PDFormerExecutor(TrafficStateExecutor):
+class MyFormerExecutor(TrafficStateExecutor):
 
     def __init__(self, config, model):
         self.no_load = config.get('no_load', [])
@@ -22,6 +27,9 @@ class PDFormerExecutor(TrafficStateExecutor):
         self.lap_mx = self._cal_lape(self.adj_mx).to(self.device)
         self.random_flip = config.get('random_flip', True)
         self.set_loss = config.get('set_loss', 'masked_mae')
+        self.is_stage2 = config.get('is_stage2', False)
+        self.temperature = config.get('temperature', 10.0)
+        self.lambda_param = config.get('lambda_parm', 10.0)
 
     def check_noload(self, k):
         for no_load_para in self.no_load:
@@ -74,7 +82,8 @@ class PDFormerExecutor(TrafficStateExecutor):
         idx = EigVal.argsort()
         EigVal, EigVec = EigVal[idx], np.real(EigVec[:, idx])
 
-        laplacian_pe = torch.from_numpy(EigVec[:, isolated_point_num + 1: self.lape_dim + isolated_point_num + 1]).float()
+        laplacian_pe = torch.from_numpy(
+            EigVec[:, isolated_point_num + 1: self.lape_dim + isolated_point_num + 1]).float()
         laplacian_pe.require_grad = False
         return laplacian_pe
 
@@ -156,6 +165,20 @@ class PDFormerExecutor(TrafficStateExecutor):
             t1 = time.time()
             train_time.append(t1 - start_time)
             train_loss = np.mean(losses)
+            if self.is_stage2:
+                loss_st2_on_raw = self.get_huber_evaluation(test_dataloader=s1_train_data)
+                loss_st2_on_incr = train_loss
+                _kl1 = F.kl_div(
+                    torch.from_numpy(stage1_executor.get_preds(train_dataloader)).softmax(dim=-1) / self.temperature,
+                    torch.from_numpy(self.get_preds(s1_train_data)).softmax(dim=-1).log() / self.temperature
+                ) * (self.lambda_param ** 2) * self.temperature
+                _kl2 = F.kl_div(
+                    torch.from_numpy(self.get_preds(train_dataloader)).softmax(dim=-1) / self.temperature,
+                    torch.from_numpy(stage1_executor.get_preds(s1_train_data)).softmax(dim=-1).log() / self.temperature
+                ) * (self.lambda_param ** 2) * self.temperature
+                loss1 = loss_st1_on_incr + loss_st2_on_raw + _kl1
+                loss2 = loss_st2_on_incr + loss_st1_on_raw + _kl2
+                train_loss = loss1 + loss2
             if self.distributed:
                 train_loss = reduce_array(train_loss, self.world_size, self.device)
             self._writer.add_scalar('training loss', train_loss, batches_seen)
@@ -297,3 +320,28 @@ class PDFormerExecutor(TrafficStateExecutor):
             self.evaluator.collect({'y_true': torch.tensor(y_truths), 'y_pred': torch.tensor(y_preds)})
             test_result = self.evaluator.save_result(self.evaluate_res_dir)
             return test_result
+
+    def get_huber_evaluation(self, test_dataloader):
+        with torch.no_grad():
+            y_truths = []
+            y_preds = []
+            for batch in test_dataloader:
+                batch.to_tensor(self.device)
+                output = self.model.predict(batch, lap_mx=self.lap_mx)
+                y_true = self._scaler.inverse_transform(batch['y'][..., :self.output_dim])
+                y_pred = self._scaler.inverse_transform(output[..., :self.output_dim])
+                y_truths.append(y_true.cpu().numpy())
+                y_preds.append(y_pred.cpu().numpy())
+            y_preds = np.concatenate(y_preds, axis=0)
+            y_truths = np.concatenate(y_truths, axis=0)
+        return masked_huber_loss(preds=y_preds, labels=y_truths, delta=2.0)
+
+    def get_preds(self, test_dataloader):
+        y_preds = []
+        with torch.no_grad():
+            for batch in test_dataloader:
+                batch.to_tensor(self.device)
+                output = self.model.predict(batch, lap_mx=self.lap_mx)
+                y_pred = self._scaler.inverse_transform(output[..., :self.output_dim])
+                y_preds.append(y_pred.cpu().numpy())
+        return np.concatenate(y_preds, axis=0)

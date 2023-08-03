@@ -121,21 +121,24 @@ class Chomp2d(nn.Module):
 
 class STSelfAttention(nn.Module):
     def __init__(
-            self, dim, s_attn_size, t_attn_size, geo_num_heads=4, sem_num_heads=2, t_num_heads=2, qkv_bias=False,
-            attn_drop=0., proj_drop=0., device=torch.device('cpu'), output_dim=1,
+            self, dim, s_attn_size, t_attn_size, geo_num_heads=4, sem_num_heads=2, t_num_heads=2, hub_num_heads=2,
+            qkv_bias=False, attn_drop=0., proj_drop=0., device=torch.device('cpu'), output_dim=1,
     ):
         super().__init__()
         assert dim % (geo_num_heads + sem_num_heads + t_num_heads) == 0
         self.geo_num_heads = geo_num_heads
         self.sem_num_heads = sem_num_heads
+        self.hub_num_heads = hub_num_heads
         self.t_num_heads = t_num_heads
         self.head_dim = dim // (geo_num_heads + sem_num_heads + t_num_heads)
         self.scale = self.head_dim ** -0.5
         self.device = device
         self.s_attn_size = s_attn_size
         self.t_attn_size = t_attn_size
-        self.geo_ratio = geo_num_heads / (geo_num_heads + sem_num_heads + t_num_heads)
-        self.sem_ratio = sem_num_heads / (geo_num_heads + sem_num_heads + t_num_heads)
+        self.geo_ratio = geo_num_heads / (geo_num_heads + sem_num_heads + hub_num_heads + t_num_heads)
+        self.sem_ratio = sem_num_heads / (geo_num_heads + sem_num_heads + hub_num_heads + t_num_heads)
+        # For the extra HubSSA
+        self.hub_ratio = hub_num_heads / (geo_num_heads + sem_num_heads + hub_num_heads + t_num_heads)
         self.t_ratio = 1 - self.geo_ratio - self.sem_ratio
         self.output_dim = output_dim
 
@@ -159,6 +162,11 @@ class STSelfAttention(nn.Module):
         self.sem_v_conv = nn.Conv2d(dim, int(dim * self.sem_ratio), kernel_size=1, bias=qkv_bias)
         self.sem_attn_drop = nn.Dropout(attn_drop)
 
+        self.hub_q_conv = nn.Conv2d(dim, int(dim * self.hub_ratio), kernel_size=1, bias=qkv_bias)
+        self.hub_k_conv = nn.Conv2d(dim, int(dim * self.hub_ratio), kernel_size=1, bias=qkv_bias)
+        self.hub_v_conv = nn.Conv2d(dim, int(dim * self.hub_ratio), kernel_size=1, bias=qkv_bias)
+        self.hub_attn_drop = nn.Dropout(attn_drop)
+
         self.t_q_conv = nn.Conv2d(dim, int(dim * self.t_ratio), kernel_size=1, bias=qkv_bias)
         self.t_k_conv = nn.Conv2d(dim, int(dim * self.t_ratio), kernel_size=1, bias=qkv_bias)
         self.t_v_conv = nn.Conv2d(dim, int(dim * self.t_ratio), kernel_size=1, bias=qkv_bias)
@@ -167,8 +175,9 @@ class STSelfAttention(nn.Module):
         self.proj = nn.Linear(dim, dim)
         self.proj_drop = nn.Dropout(proj_drop)
 
-    def forward(self, x, x_patterns, pattern_keys, geo_mask=None, sem_mask=None):
+    def forward(self, x, x_patterns, pattern_keys, geo_mask=None, sem_mask=None, hub_mask=None):
         B, T, N, D = x.shape
+        # TSA
         t_q = self.t_q_conv(x.permute(0, 3, 1, 2)).permute(0, 3, 2, 1)
         t_k = self.t_k_conv(x.permute(0, 3, 1, 2)).permute(0, 3, 2, 1)
         t_v = self.t_v_conv(x.permute(0, 3, 1, 2)).permute(0, 3, 2, 1)
@@ -179,7 +188,7 @@ class STSelfAttention(nn.Module):
         t_attn = t_attn.softmax(dim=-1)
         t_attn = self.t_attn_drop(t_attn)
         t_x = (t_attn @ t_v).transpose(2, 3).reshape(B, N, T, int(D * self.t_ratio)).transpose(1, 2)
-
+        # GeoSSA
         geo_q = self.geo_q_conv(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
         geo_k = self.geo_k_conv(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
         for i in range(self.output_dim):
@@ -199,7 +208,7 @@ class STSelfAttention(nn.Module):
         geo_attn = geo_attn.softmax(dim=-1)
         geo_attn = self.geo_attn_drop(geo_attn)
         geo_x = (geo_attn @ geo_v).transpose(2, 3).reshape(B, T, N, int(D * self.geo_ratio))
-
+        # SemSSA
         sem_q = self.sem_q_conv(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
         sem_k = self.sem_k_conv(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
         sem_v = self.sem_v_conv(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
@@ -212,8 +221,21 @@ class STSelfAttention(nn.Module):
         sem_attn = sem_attn.softmax(dim=-1)
         sem_attn = self.sem_attn_drop(sem_attn)
         sem_x = (sem_attn @ sem_v).transpose(2, 3).reshape(B, T, N, int(D * self.sem_ratio))
+        # HubSSA
+        hub_q = self.hub_q_conv(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
+        hub_k = self.hub_k_conv(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
+        hub_v = self.hub_v_conv(x.permute(0, 3, 1, 2)).permute(0, 2, 3, 1)
+        hub_q = hub_q.reshape(B, T, N, self.hub_num_heads, self.head_dim).permute(0, 1, 3, 2, 4)
+        hub_k = hub_k.reshape(B, T, N, self.hub_num_heads, self.head_dim).permute(0, 1, 3, 2, 4)
+        hub_v = hub_v.reshape(B, T, N, self.hub_num_heads, self.head_dim).permute(0, 1, 3, 2, 4)
+        hub_attn = (hub_q @ hub_k.transpose(-2, -1)) * self.scale
+        if hub_mask is not None:
+            hub_attn.masked_fill_(hub_mask, float('-inf'))
+        hub_attn = hub_attn.softmax(dim=-1)
+        hub_attn = self.hub_attn_drop(hub_attn)
+        hub_x = (hub_attn @ hub_v).transpose(2, 3).reshape(B, T, N, int(D * self.hub_ratio))
 
-        x = self.proj(torch.cat([t_x, geo_x, sem_x], dim=-1))
+        x = self.proj(torch.cat([t_x, geo_x, sem_x, hub_x], dim=-1))
         x = self.proj_drop(x)
         return x
 
@@ -300,19 +322,25 @@ class STEncoderBlock(nn.Module):
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
 
-    def forward(self, x, x_patterns, pattern_keys, geo_mask=None, sem_mask=None):
+    def forward(self, x, x_patterns, pattern_keys, geo_mask=None, sem_mask=None, hub_mask=None):
         if self.type_ln == 'pre':
             x = x + self.drop_path(
-                self.st_attn(self.norm1(x), x_patterns, pattern_keys, geo_mask=geo_mask, sem_mask=sem_mask))
+                self.st_attn(self.norm1(x), x_patterns, pattern_keys, geo_mask=geo_mask, sem_mask=sem_mask,
+                             hub_mask=hub_mask)
+            )
             x = x + self.drop_path(self.mlp(self.norm2(x)))
         elif self.type_ln == 'post':
             x = self.norm1(
-                x + self.drop_path(self.st_attn(x, x_patterns, pattern_keys, geo_mask=geo_mask, sem_mask=sem_mask)))
+                x + self.drop_path(
+                    self.st_attn(x, x_patterns, pattern_keys, geo_mask=geo_mask, sem_mask=sem_mask,
+                                 hub_mask=hub_mask)
+                )
+            )
             x = self.norm2(x + self.drop_path(self.mlp(x)))
         return x
 
 
-class PDFormer(AbstractTrafficStateModel):
+class MyFormer(AbstractTrafficStateModel):
     def __init__(self, config, data_feature):
         super().__init__(config, data_feature)
 
@@ -376,7 +404,7 @@ class PDFormer(AbstractTrafficStateModel):
             self.far_mask = self.far_mask.bool()
         else:
             sh_mx = sh_mx.T
-            # Original PDFormer GeoSSA and SemSSA
+            # Original PDFormer M_geo and M_sem
             self.geo_mask = torch.zeros(self.num_nodes, self.num_nodes).to(self.device)
             self.geo_mask[sh_mx >= self.far_mask_delta] = 1
             self.geo_mask = self.geo_mask.bool()
@@ -385,7 +413,7 @@ class PDFormer(AbstractTrafficStateModel):
             for i in range(self.sem_mask.shape[0]):
                 self.sem_mask[i][sem_mask[i]] = 0
             self.sem_mask = self.sem_mask.bool()
-            # HubSSA
+            # M_hub
             self.hub_mask = torch.ones(self.num_nodes, self.num_nodes).to(self.device)
             fullRel: pd.DataFrame = data_feature.get("raw_rel_dataframe")
             for src, dst in zip(fullRel.origin_id, fullRel.destination_id):
@@ -451,7 +479,7 @@ class PDFormer(AbstractTrafficStateModel):
         enc = self.enc_embed_layer(x, lap_mx)
         skip = 0
         for i, encoder_block in enumerate(self.encoder_blocks):
-            enc = encoder_block(enc, x_patterns, pattern_keys, self.geo_mask, self.sem_mask)
+            enc = encoder_block(enc, x_patterns, pattern_keys, self.geo_mask, self.sem_mask, self.hub_mask)
             skip += self.skip_convs[i](enc.permute(0, 3, 2, 1))
 
         skip = self.end_conv1(F.relu(skip.permute(0, 3, 2, 1)))
@@ -462,36 +490,37 @@ class PDFormer(AbstractTrafficStateModel):
         if set_loss.lower() not in ['mae', 'mse', 'rmse', 'mape', 'logcosh', 'huber', 'quantile', 'masked_mae',
                                     'masked_mse', 'masked_rmse', 'masked_mape', 'masked_huber', 'r2', 'evar']:
             self._logger.warning('Received unrecognized train loss function, set default mae loss func.')
-        if set_loss.lower() == 'mae':
-            lf = loss.masked_mae_torch
-        elif set_loss.lower() == 'mse':
-            lf = loss.masked_mse_torch
-        elif set_loss.lower() == 'rmse':
-            lf = loss.masked_rmse_torch
-        elif set_loss.lower() == 'mape':
-            lf = loss.masked_mape_torch
-        elif set_loss.lower() == 'logcosh':
-            lf = loss.log_cosh_loss
-        elif set_loss.lower() == 'huber':
-            lf = partial(loss.huber_loss, delta=self.huber_delta)
-        elif set_loss.lower() == 'quantile':
-            lf = partial(loss.quantile_loss, delta=self.quan_delta)
-        elif set_loss.lower() == 'masked_mae':
-            lf = partial(loss.masked_mae_torch, null_val=0)
-        elif set_loss.lower() == 'masked_mse':
-            lf = partial(loss.masked_mse_torch, null_val=0)
-        elif set_loss.lower() == 'masked_rmse':
-            lf = partial(loss.masked_rmse_torch, null_val=0)
-        elif set_loss.lower() == 'masked_mape':
-            lf = partial(loss.masked_mape_torch, null_val=0)
-        elif set_loss.lower() == 'masked_huber':
-            lf = partial(loss.masked_huber_loss, delta=self.huber_delta, null_val=0)
-        elif set_loss.lower() == 'r2':
-            lf = loss.r2_score_torch
-        elif set_loss.lower() == 'evar':
-            lf = loss.explained_variance_score_torch
-        else:
-            lf = loss.masked_mae_torch
+        match set_loss.lower():
+            case 'huber':
+                lf = partial(loss.huber_loss, delta=self.huber_delta)
+            case 'mae':
+                lf = loss.masked_mae_torch
+            case 'mse':
+                lf = loss.masked_mse_torch
+            case 'rmse':
+                lf = loss.masked_rmse_torch
+            case 'mape':
+                lf = loss.masked_mape_torch
+            case 'logcosh':
+                lf = loss.log_cosh_loss
+            case 'quantile':
+                lf = partial(loss.quantile_loss, delta=self.quan_delta)
+            case 'masked_mae':
+                lf = partial(loss.masked_mae_torch, null_val=0)
+            case 'masked_mse':
+                lf = partial(loss.masked_mse_torch, null_val=0)
+            case 'masked_rmse':
+                lf = partial(loss.masked_rmse_torch, null_val=0)
+            case 'masked_mape':
+                lf = partial(loss.masked_mape_torch, null_val=0)
+            case 'masked_huber':
+                lf = partial(loss.masked_huber_loss, delta=self.huber_delta, null_val=0)
+            case 'r2':
+                lf = loss.r2_score_torch
+            case 'evar':
+                lf = loss.explained_variance_score_torch
+            case _:
+                lf = loss.masked_mae_torch
         return lf
 
     def calculate_loss_without_predict(self, y_true, y_predicted, batches_seen=None, set_loss='masked_mae'):

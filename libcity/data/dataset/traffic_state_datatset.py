@@ -76,7 +76,7 @@ class TrafficStateDataset(AbstractDataset):
         if os.path.exists(self.data_path + self.rel_file + '.rel'):
             self._load_rel()
         else:
-            self.adj_mx = np.zeros((len(self.geo_ids), len(self.geo_ids)), dtype=np.float32)
+            self.adj_mx = np.zeros((len(self.geo_ids), len(self.geo_ids)), dtype=np.float16)
 
     def _load_geo(self):
         geofile = pd.read_csv(self.data_path + self.geo_file + '.geo')
@@ -120,7 +120,7 @@ class TrafficStateDataset(AbstractDataset):
                 self.weight_col = relfile.columns[-1]
                 self.distance_df = relfile[~relfile[self.weight_col].isna()][[
                     'origin_id', 'destination_id', self.weight_col]]
-        self.adj_mx = np.zeros((len(self.geo_ids), len(self.geo_ids)), dtype=np.float32)
+        self.adj_mx = np.zeros((len(self.geo_ids), len(self.geo_ids)), dtype=np.float16)
         if self.init_weight_inf_or_zero.lower() == 'inf' and self.set_weight_link_or_dist.lower() != 'link':
             self.adj_mx[:] = np.inf
         for row in self.distance_df.values:
@@ -139,7 +139,7 @@ class TrafficStateDataset(AbstractDataset):
             self._calculate_adjacency_matrix()
 
     def _load_grid_rel(self):
-        self.adj_mx = np.zeros((len(self.geo_ids), len(self.geo_ids)), dtype=np.float32)
+        self.adj_mx = np.zeros((len(self.geo_ids), len(self.geo_ids)), dtype=np.float16)
         dirs = [[0, 1], [1, 0], [-1, 0], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]
         for i in range(self.len_row):
             for j in range(self.len_column):
@@ -189,7 +189,7 @@ class TrafficStateDataset(AbstractDataset):
         data = []
         for i in range(0, df.shape[0], len_time):
             data.append(df[i:i+len_time].values)
-        data = np.array(data, dtype=np.float)
+        data = np.array(data, dtype=np.float16)
         data = data.swapaxes(0, 1)
         self._logger.info("Loaded file " + filename + '.dyna' + ', shape=' + str(data.shape))
         return data
@@ -221,7 +221,7 @@ class TrafficStateDataset(AbstractDataset):
         data = []
         for i in range(0, df.shape[0], len_time):
             data.append(df[i:i + len_time].values)
-        data = np.array(data, dtype=np.float)
+        data = np.array(data, dtype=np.float16)
         data = data.swapaxes(0, 1)
         self._logger.info("Loaded file " + filename + '.grid' + ', shape=' + str(data.shape))
         return data
@@ -257,7 +257,7 @@ class TrafficStateDataset(AbstractDataset):
                 index = (i * self.len_column + j) * len_time
                 tmp.append(df[index:index + len_time].values)
             data.append(tmp)
-        data = np.array(data, dtype=np.float)
+        data = np.array(data, dtype=np.float16)
         data = data.swapaxes(2, 0).swapaxes(1, 2)
         self._logger.info("Loaded file " + filename + '.grid' + ', shape=' + str(data.shape))
         return data

@@ -8,13 +8,13 @@ from libcity.data.utils import generate_dataloader
 from tslearn.clustering import TimeSeriesKMeans, KShape
 
 
-class PDFormerDataset(TrafficStatePointDataset):
+class MyFormerDataset(TrafficStatePointDataset):
 
     def __init__(self, config):
         self.type_short_path = config.get('type_short_path', 'hop')
         super().__init__(config)
         self.cache_file_name = os.path.join('./libcity/cache/dataset_cache/',
-                                            'pdformer_point_based_{}.npz'.format(self.parameters_str))
+                                            'MyFormer_point_based_{}.npz'.format(self.parameters_str))
         self.points_per_hour = 3600 // self.time_intervals
         self.dtw_matrix = self._get_dtw()
         self.points_per_day = 24 * 3600 // self.time_intervals
@@ -50,7 +50,7 @@ class PDFormerDataset(TrafficStatePointDataset):
     def _load_rel(self):
         self.sd_mx = None
         super()._load_rel()
-        self.raw_rel_dataframe = pd.read_csv(self.data_path + self.rel_file + '.rel', index_col="rel_id")
+        self.raw_rel_dataframe = pd.read_csv(self.data_path + self.rel_file + '.rel')
         self._logger.info('Max adj_mx value = {}'.format(self.adj_mx.max()))
         self.sh_mx = self.adj_mx.copy()
         if self.type_short_path == 'hop':

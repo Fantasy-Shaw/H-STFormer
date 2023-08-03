@@ -30,7 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--model', type=str,
                         default='GRU', help='the name of model')
     parser.add_argument('--dataset', type=str,
-                        default='METR_LA', help='the name of dataset')
+                        default='PeMS04', help='the name of dataset')
     parser.add_argument('--config_file', type=str,
                         default=None, help='the file name of config file')
     parser.add_argument('--saved_model', type=str2bool,
@@ -41,12 +41,23 @@ if __name__ == '__main__':
     parser.add_argument("--local_rank", default=0, type=int)
     parser.add_argument('--exp_id', type=str,
                         default=None, help='id of experiment')
+    # Params for incremental learning
+    parser.add_argument('--is_stage2', type=str2bool,
+                        default=False, help='incremental stage of experiment')
+    parser.add_argument('--stage1_exp_id', type=str,
+                        default=None, help='id of stage_1 experiment for stage_2')
+    parser.add_argument('--stage_1_dataset', type=str,
+                        default='PeMS04', help='the name of stage_1 dataset')
+    parser.add_argument('--temperature', type=float,
+                        default=10, help='Temperature hyperparameter')
+    parser.add_argument('--lambda_parm', type=float,
+                        default=10, help='Distillation loss hyperparameter')
     add_other_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
     other_args = {key: val for key, val in dict_args.items() if key not in [
         'task', 'model', 'dataset', 'config_file', 'saved_model', 'train'] and
-        val is not None}
+                  val is not None}
     if args.gpu_id is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(map(str, args.gpu_id))
     run_model(task=args.task, model_name=args.model, dataset_name=args.dataset,

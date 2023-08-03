@@ -7,13 +7,13 @@ from libcity.data.utils import generate_dataloader
 from tslearn.clustering import TimeSeriesKMeans, KShape
 
 
-class PDFormerGridDataset(TrafficStateGridDataset):
+class MyFormerGridDataset(TrafficStateGridDataset):
 
     def __init__(self, config):
         self.type_short_path = config.get('type_short_path', 'dist')
         super().__init__(config)
         self.cache_file_name = os.path.join('./libcity/cache/dataset_cache/',
-                                            'pdformer_grid_based_{}.npz'.format(self.parameters_str))
+                                            'MyFormer_grid_based_{}.npz'.format(self.parameters_str))
         self.points_per_hour = 3600 // self.time_intervals
         self.dtw_matrix = self._get_dtw()
         self.points_per_day = 24 * 3600 // self.time_intervals
