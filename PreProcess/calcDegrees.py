@@ -27,9 +27,9 @@ class DegreeStatistics:
         self.nodeDegs = None
         self.nodeDegStat = {}
         self.roadStatusStat = {}
-        self.calc()
+        self.__calc()
 
-    def calc(self, vis=True):
+    def __calc(self, vis=True):
         for src, dst in zip(self.fullRel.origin_id, self.fullRel.destination_id):
             self.posDegMap[src] += 1
             self.negDegMap[dst] += 1
@@ -65,10 +65,10 @@ class DegreeStatistics:
         self.roadStatusStat.to_csv(self.roadOutPut, index=False)
         # print(self.roadStatusStat)
         if vis:
-            self.vis_edge()
-            self.vis_node()
+            self.__vis_edge()
+            self.__vis_node()
 
-    def vis_edge(self):
+    def __vis_edge(self):
         plt.figure()
         plt.rcParams['font.sans-serif'] = ['Times New Roman']
         plt.rcParams['axes.unicode_minus'] = False
@@ -83,7 +83,7 @@ class DegreeStatistics:
         plt.savefig(self.roadFigOutPut)
         plt.show()
 
-    def vis_node(self):
+    def __vis_node(self):
         plt.figure()
         plt.rcParams['font.sans-serif'] = ['Times New Roman']
         plt.rcParams['axes.unicode_minus'] = False

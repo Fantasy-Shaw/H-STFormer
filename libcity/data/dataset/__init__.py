@@ -4,7 +4,7 @@ from libcity.data.dataset.traffic_state_point_dataset import \
     TrafficStatePointDataset
 from libcity.data.dataset.traffic_state_grid_dataset import \
     TrafficStateGridDataset
-from libcity.data.dataset.pdformer_dataset import PDFormerDataset
+from libcity.data.dataset.myformer_dataset import PDFormerDataset
 from libcity.data.dataset.pdformer_grid_dataset import PDFormerGridDataset
 
 

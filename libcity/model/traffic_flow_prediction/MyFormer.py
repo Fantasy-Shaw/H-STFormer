@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -64,8 +65,8 @@ class LaplacianPE(nn.Module):
 
 class DataEmbedding(nn.Module):
     def __init__(
-        self, feature_dim, embed_dim, lape_dim, adj_mx, drop=0.,
-        add_time_in_day=False, add_day_in_week=False, device=torch.device('cpu'),
+            self, feature_dim, embed_dim, lape_dim, adj_mx, drop=0.,
+            add_time_in_day=False, add_day_in_week=False, device=torch.device('cpu'),
     ):
         super().__init__()
 
@@ -120,8 +121,8 @@ class Chomp2d(nn.Module):
 
 class STSelfAttention(nn.Module):
     def __init__(
-        self, dim, s_attn_size, t_attn_size, geo_num_heads=4, sem_num_heads=2, t_num_heads=2, qkv_bias=False,
-        attn_drop=0., proj_drop=0., device=torch.device('cpu'), output_dim=1,
+            self, dim, s_attn_size, t_attn_size, geo_num_heads=4, sem_num_heads=2, t_num_heads=2, qkv_bias=False,
+            attn_drop=0., proj_drop=0., device=torch.device('cpu'), output_dim=1,
     ):
         super().__init__()
         assert dim % (geo_num_heads + sem_num_heads + t_num_heads) == 0
@@ -238,8 +239,8 @@ class Mlp(nn.Module):
 
 class TemporalSelfAttention(nn.Module):
     def __init__(
-        self, dim, dim_out, t_attn_size, t_num_heads=6, qkv_bias=False,
-        attn_drop=0., proj_drop=0., device=torch.device('cpu'),
+            self, dim, dim_out, t_attn_size, t_num_heads=6, qkv_bias=False,
+            attn_drop=0., proj_drop=0., device=torch.device('cpu'),
     ):
         super().__init__()
         assert dim % t_num_heads == 0
@@ -281,14 +282,17 @@ class TemporalSelfAttention(nn.Module):
 class STEncoderBlock(nn.Module):
 
     def __init__(
-        self, dim, s_attn_size, t_attn_size, geo_num_heads=4, sem_num_heads=2, t_num_heads=2, mlp_ratio=4., qkv_bias=True, drop=0., attn_drop=0.,
-        drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, device=torch.device('cpu'), type_ln="pre", output_dim=1,
+            self, dim, s_attn_size, t_attn_size, geo_num_heads=4, sem_num_heads=2, t_num_heads=2, mlp_ratio=4.,
+            qkv_bias=True, drop=0., attn_drop=0.,
+            drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, device=torch.device('cpu'), type_ln="pre",
+            output_dim=1,
     ):
         super().__init__()
         self.type_ln = type_ln
         self.norm1 = norm_layer(dim)
         self.st_attn = STSelfAttention(
-            dim, s_attn_size, t_attn_size, geo_num_heads=geo_num_heads, sem_num_heads=sem_num_heads, t_num_heads=t_num_heads, qkv_bias=qkv_bias,
+            dim, s_attn_size, t_attn_size, geo_num_heads=geo_num_heads, sem_num_heads=sem_num_heads,
+            t_num_heads=t_num_heads, qkv_bias=qkv_bias,
             attn_drop=attn_drop, proj_drop=drop, device=device, output_dim=output_dim,
         )
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
@@ -298,10 +302,12 @@ class STEncoderBlock(nn.Module):
 
     def forward(self, x, x_patterns, pattern_keys, geo_mask=None, sem_mask=None):
         if self.type_ln == 'pre':
-            x = x + self.drop_path(self.st_attn(self.norm1(x), x_patterns, pattern_keys, geo_mask=geo_mask, sem_mask=sem_mask))
+            x = x + self.drop_path(
+                self.st_attn(self.norm1(x), x_patterns, pattern_keys, geo_mask=geo_mask, sem_mask=sem_mask))
             x = x + self.drop_path(self.mlp(self.norm2(x)))
         elif self.type_ln == 'post':
-            x = self.norm1(x + self.drop_path(self.st_attn(x, x_patterns, pattern_keys, geo_mask=geo_mask, sem_mask=sem_mask)))
+            x = self.norm1(
+                x + self.drop_path(self.st_attn(x, x_patterns, pattern_keys, geo_mask=geo_mask, sem_mask=sem_mask)))
             x = self.norm2(x + self.drop_path(self.mlp(x)))
         return x
 
@@ -370,6 +376,7 @@ class PDFormer(AbstractTrafficStateModel):
             self.far_mask = self.far_mask.bool()
         else:
             sh_mx = sh_mx.T
+            # Original PDFormer GeoSSA and SemSSA
             self.geo_mask = torch.zeros(self.num_nodes, self.num_nodes).to(self.device)
             self.geo_mask[sh_mx >= self.far_mask_delta] = 1
             self.geo_mask = self.geo_mask.bool()
@@ -378,6 +385,12 @@ class PDFormer(AbstractTrafficStateModel):
             for i in range(self.sem_mask.shape[0]):
                 self.sem_mask[i][sem_mask[i]] = 0
             self.sem_mask = self.sem_mask.bool()
+            # HubSSA
+            self.hub_mask = torch.ones(self.num_nodes, self.num_nodes).to(self.device)
+            fullRel: pd.DataFrame = data_feature.get("raw_rel_dataframe")
+            for src, dst in zip(fullRel.origin_id, fullRel.destination_id):
+                self.hub_mask[src][dst] += 1
+                self.hub_mask[dst][src] += 1
 
         self.pattern_keys = torch.from_numpy(data_feature.get('pattern_keys')).float().to(self.device)
         self.pattern_embeddings = nn.ModuleList([
@@ -392,9 +405,12 @@ class PDFormer(AbstractTrafficStateModel):
         enc_dpr = [x.item() for x in torch.linspace(0, drop_path, enc_depth)]
         self.encoder_blocks = nn.ModuleList([
             STEncoderBlock(
-                dim=self.embed_dim, s_attn_size=self.s_attn_size, t_attn_size=self.t_attn_size, geo_num_heads=geo_num_heads, sem_num_heads=sem_num_heads, t_num_heads=t_num_heads,
-                mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, drop=drop, attn_drop=attn_drop, drop_path=enc_dpr[i], act_layer=nn.GELU,
-                norm_layer=partial(nn.LayerNorm, eps=1e-6), device=self.device, type_ln=type_ln, output_dim=self.output_dim,
+                dim=self.embed_dim, s_attn_size=self.s_attn_size, t_attn_size=self.t_attn_size,
+                geo_num_heads=geo_num_heads, sem_num_heads=sem_num_heads, t_num_heads=t_num_heads,
+                mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, drop=drop, attn_drop=attn_drop, drop_path=enc_dpr[i],
+                act_layer=nn.GELU,
+                norm_layer=partial(nn.LayerNorm, eps=1e-6), device=self.device, type_ln=type_ln,
+                output_dim=self.output_dim,
             ) for i in range(enc_depth)
         ])
 
@@ -413,7 +429,7 @@ class PDFormer(AbstractTrafficStateModel):
 
     def forward(self, batch, lap_mx=None):
         x = batch['X']
-        T =  x.shape[1]
+        T = x.shape[1]
         x_pattern_list = []
         for i in range(self.s_attn_size):
             x_pattern = F.pad(
@@ -444,7 +460,7 @@ class PDFormer(AbstractTrafficStateModel):
 
     def get_loss_func(self, set_loss):
         if set_loss.lower() not in ['mae', 'mse', 'rmse', 'mape', 'logcosh', 'huber', 'quantile', 'masked_mae',
-                                           'masked_mse', 'masked_rmse', 'masked_mape', 'masked_huber', 'r2', 'evar']:
+                                    'masked_mse', 'masked_rmse', 'masked_mape', 'masked_huber', 'r2', 'evar']:
             self._logger.warning('Received unrecognized train loss function, set default mae loss func.')
         if set_loss.lower() == 'mae':
             lf = loss.masked_mae_torch

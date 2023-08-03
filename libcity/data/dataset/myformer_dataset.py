@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import pandas as pd
 from fastdtw import fastdtw
 from tqdm import tqdm
 from libcity.data.dataset import TrafficStatePointDataset
@@ -49,6 +50,7 @@ class PDFormerDataset(TrafficStatePointDataset):
     def _load_rel(self):
         self.sd_mx = None
         super()._load_rel()
+        self.raw_rel_dataframe = pd.read_csv(self.data_path + self.rel_file + '.rel', index_col="rel_id")
         self._logger.info('Max adj_mx value = {}'.format(self.adj_mx.max()))
         self.sh_mx = self.adj_mx.copy()
         if self.type_short_path == 'hop':
@@ -113,15 +115,18 @@ class PDFormerDataset(TrafficStatePointDataset):
         self.num_batches = len(self.train_dataloader)
         self.pattern_key_file = os.path.join(
             './libcity/cache/dataset_cache/', 'pattern_keys_{}_{}_{}_{}_{}_{}'.format(
-                self.cluster_method, self.dataset, self.cand_key_days, self.s_attn_size, self.n_cluster, self.cluster_max_iter))
+                self.cluster_method, self.dataset, self.cand_key_days, self.s_attn_size, self.n_cluster,
+                self.cluster_max_iter))
         if not os.path.exists(self.pattern_key_file + '.npy'):
             cand_key_time_steps = self.cand_key_days * self.points_per_day
-            pattern_cand_keys = x_train[:cand_key_time_steps, :self.s_attn_size, :, :self.output_dim].swapaxes(1, 2).reshape(-1, self.s_attn_size, self.output_dim)
+            pattern_cand_keys = (x_train[:cand_key_time_steps, :self.s_attn_size, :, :self.output_dim]
+                                 .swapaxes(1, 2).reshape(-1, self.s_attn_size, self.output_dim))
             self._logger.info("Clustering...")
             if self.cluster_method == "kshape":
                 km = KShape(n_clusters=self.n_cluster, max_iter=self.cluster_max_iter).fit(pattern_cand_keys)
             else:
-                km = TimeSeriesKMeans(n_clusters=self.n_cluster, metric="softdtw", max_iter=self.cluster_max_iter).fit(pattern_cand_keys)
+                km = TimeSeriesKMeans(n_clusters=self.n_cluster, metric="softdtw", max_iter=self.cluster_max_iter).fit(
+                    pattern_cand_keys)
             self.pattern_keys = km.cluster_centers_
             np.save(self.pattern_key_file, self.pattern_keys)
             self._logger.info("Saved at file " + self.pattern_key_file + ".npy")
@@ -134,4 +139,5 @@ class PDFormerDataset(TrafficStatePointDataset):
         return {"scaler": self.scaler, "adj_mx": self.adj_mx, "sd_mx": self.sd_mx, "sh_mx": self.sh_mx,
                 "ext_dim": self.ext_dim, "num_nodes": self.num_nodes, "feature_dim": self.feature_dim,
                 "output_dim": self.output_dim, "num_batches": self.num_batches,
-                "dtw_matrix": self.dtw_matrix, "pattern_keys": self.pattern_keys}
+                "dtw_matrix": self.dtw_matrix, "pattern_keys": self.pattern_keys,
+                "raw_rel_dataframe": self.raw_rel_dataframe}
