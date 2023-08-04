@@ -165,9 +165,10 @@ class MyFormerExecutor(TrafficStateExecutor):
             t1 = time.time()
             train_time.append(t1 - start_time)
             train_loss = np.mean(losses)
+            # Knowledge distillation
             if self.is_stage2:
-                loss_st2_on_raw = self.get_huber_evaluation(test_dataloader=s1_train_data)
-                loss_st2_on_incr = train_loss
+                loss_st2_on_raw = self.get_huber_evaluation(test_dataloader=s1_train_data)  # Z_g_raw
+                loss_st2_on_incr = train_loss   # Z_g_incr
                 _kl1 = F.kl_div(
                     torch.from_numpy(stage1_executor.get_preds(train_dataloader)).softmax(dim=-1) / self.temperature,
                     torch.from_numpy(self.get_preds(s1_train_data)).softmax(dim=-1).log() / self.temperature

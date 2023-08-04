@@ -49,9 +49,9 @@ if __name__ == '__main__':
     parser.add_argument('--stage_1_dataset', type=str,
                         default='PeMS04', help='the name of stage_1 dataset')
     parser.add_argument('--temperature', type=float,
-                        default=10, help='Temperature hyperparameter')
+                        default=10.0, help='Temperature hyperparameter')
     parser.add_argument('--lambda_parm', type=float,
-                        default=10, help='Distillation loss hyperparameter')
+                        default=10.0, help='Distillation loss hyperparameter')
     add_other_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)

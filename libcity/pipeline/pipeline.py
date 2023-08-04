@@ -39,7 +39,7 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
             task=task, model=model_name, dataset=stage1_dataset_name, config_file=config_file,
             saved_model=saved_model, train=False, other_args=other_args
         )
-        stage1_config['exp_id'] = stage1_config.get('stage1_exp_id', default=-1)
+        stage1_config['exp_id'] = stage1_config.get('stage1_exp_id', default=None)
         stage1_dataset = get_dataset(stage1_config)
         s1_train_data, s1_valid_data, s1_test_data = stage1_dataset.get_data()
         stage1_data_feature = stage1_dataset.get_data_feature()
@@ -83,7 +83,7 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
             executor.load_model(model_cache_file)
         executor.evaluate(s2_test_data)
 
-        loss_st1_on_incr = stage1_executor.get_huber_evaluation(s2_test_data)  # Z_f0_incr
+        loss_st1_on_incr = stage1_executor.get_huber_evaluation(s2_train_data)  # Z_f0_incr
 
 
 def run_model(task=None, model_name=None, dataset_name=None, config_file=None,
