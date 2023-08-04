@@ -47,6 +47,16 @@ class MyFormerDataset(TrafficStatePointDataset):
         self._logger.info('Load DTW matrix from {}'.format(cache_path))
         return dtw_matrix
 
+    def _load_geo(self):
+        geofile = pd.read_csv(self.data_path + self.geo_file + '.geo')
+        self.geo_ids = list(geofile['geo_id'])
+        self.num_nodes = 1000
+        self.geo_to_ind = {}
+        for index, idx in enumerate(self.geo_ids):
+            self.geo_to_ind[idx] = index
+        self._logger.info("Loaded file " + self.geo_file + '.geo' + ', num_nodes=' + str(
+            self.num_nodes) + ', len(self.geo_ids)=' + str(len(self.geo_ids)))
+
     def _load_rel(self):
         self.sd_mx = None
         super()._load_rel()

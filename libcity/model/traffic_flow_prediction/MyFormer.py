@@ -486,41 +486,77 @@ class MyFormer(AbstractTrafficStateModel):
         skip = self.end_conv2(F.relu(skip.permute(0, 3, 2, 1)))
         return skip.permute(0, 3, 2, 1)
 
+    # def get_loss_func(self, set_loss):
+    #     if set_loss.lower() not in ['mae', 'mse', 'rmse', 'mape', 'logcosh', 'huber', 'quantile', 'masked_mae',
+    #                                 'masked_mse', 'masked_rmse', 'masked_mape', 'masked_huber', 'r2', 'evar']:
+    #         self._logger.warning('Received unrecognized train loss function, set default mae loss func.')
+    #     match set_loss.lower():
+    #         case 'huber':
+    #             lf = partial(loss.huber_loss, delta=self.huber_delta)
+    #         case 'mae':
+    #             lf = loss.masked_mae_torch
+    #         case 'mse':
+    #             lf = loss.masked_mse_torch
+    #         case 'rmse':
+    #             lf = loss.masked_rmse_torch
+    #         case 'mape':
+    #             lf = loss.masked_mape_torch
+    #         case 'logcosh':
+    #             lf = loss.log_cosh_loss
+    #         case 'quantile':
+    #             lf = partial(loss.quantile_loss, delta=self.quan_delta)
+    #         case 'masked_mae':
+    #             lf = partial(loss.masked_mae_torch, null_val=0)
+    #         case 'masked_mse':
+    #             lf = partial(loss.masked_mse_torch, null_val=0)
+    #         case 'masked_rmse':
+    #             lf = partial(loss.masked_rmse_torch, null_val=0)
+    #         case 'masked_mape':
+    #             lf = partial(loss.masked_mape_torch, null_val=0)
+    #         case 'masked_huber':
+    #             lf = partial(loss.masked_huber_loss, delta=self.huber_delta, null_val=0)
+    #         case 'r2':
+    #             lf = loss.r2_score_torch
+    #         case 'evar':
+    #             lf = loss.explained_variance_score_torch
+    #         case _:
+    #             lf = loss.masked_mae_torch
+    #     return lf
+
     def get_loss_func(self, set_loss):
         if set_loss.lower() not in ['mae', 'mse', 'rmse', 'mape', 'logcosh', 'huber', 'quantile', 'masked_mae',
-                                    'masked_mse', 'masked_rmse', 'masked_mape', 'masked_huber', 'r2', 'evar']:
+                                           'masked_mse', 'masked_rmse', 'masked_mape', 'masked_huber', 'r2', 'evar']:
             self._logger.warning('Received unrecognized train loss function, set default mae loss func.')
-        match set_loss.lower():
-            case 'huber':
-                lf = partial(loss.huber_loss, delta=self.huber_delta)
-            case 'mae':
-                lf = loss.masked_mae_torch
-            case 'mse':
-                lf = loss.masked_mse_torch
-            case 'rmse':
-                lf = loss.masked_rmse_torch
-            case 'mape':
-                lf = loss.masked_mape_torch
-            case 'logcosh':
-                lf = loss.log_cosh_loss
-            case 'quantile':
-                lf = partial(loss.quantile_loss, delta=self.quan_delta)
-            case 'masked_mae':
-                lf = partial(loss.masked_mae_torch, null_val=0)
-            case 'masked_mse':
-                lf = partial(loss.masked_mse_torch, null_val=0)
-            case 'masked_rmse':
-                lf = partial(loss.masked_rmse_torch, null_val=0)
-            case 'masked_mape':
-                lf = partial(loss.masked_mape_torch, null_val=0)
-            case 'masked_huber':
-                lf = partial(loss.masked_huber_loss, delta=self.huber_delta, null_val=0)
-            case 'r2':
-                lf = loss.r2_score_torch
-            case 'evar':
-                lf = loss.explained_variance_score_torch
-            case _:
-                lf = loss.masked_mae_torch
+        if set_loss.lower() == 'mae':
+            lf = loss.masked_mae_torch
+        elif set_loss.lower() == 'mse':
+            lf = loss.masked_mse_torch
+        elif set_loss.lower() == 'rmse':
+            lf = loss.masked_rmse_torch
+        elif set_loss.lower() == 'mape':
+            lf = loss.masked_mape_torch
+        elif set_loss.lower() == 'logcosh':
+            lf = loss.log_cosh_loss
+        elif set_loss.lower() == 'huber':
+            lf = partial(loss.huber_loss, delta=self.huber_delta)
+        elif set_loss.lower() == 'quantile':
+            lf = partial(loss.quantile_loss, delta=self.quan_delta)
+        elif set_loss.lower() == 'masked_mae':
+            lf = partial(loss.masked_mae_torch, null_val=0)
+        elif set_loss.lower() == 'masked_mse':
+            lf = partial(loss.masked_mse_torch, null_val=0)
+        elif set_loss.lower() == 'masked_rmse':
+            lf = partial(loss.masked_rmse_torch, null_val=0)
+        elif set_loss.lower() == 'masked_mape':
+            lf = partial(loss.masked_mape_torch, null_val=0)
+        elif set_loss.lower() == 'masked_huber':
+            lf = partial(loss.masked_huber_loss, delta=self.huber_delta, null_val=0)
+        elif set_loss.lower() == 'r2':
+            lf = loss.r2_score_torch
+        elif set_loss.lower() == 'evar':
+            lf = loss.explained_variance_score_torch
+        else:
+            lf = loss.masked_mae_torch
         return lf
 
     def calculate_loss_without_predict(self, y_true, y_predicted, batches_seen=None, set_loss='masked_mae'):
