@@ -1,7 +1,7 @@
 import os
 import argparse
 
-from libcity.pipeline import run_model
+from libcity.pipeline.pipeline import run_incr_model
 from libcity.utils import general_arguments, str2bool, str2float
 
 
@@ -52,6 +52,8 @@ if __name__ == '__main__':
                         default=10.0, help='Temperature hyperparameter')
     parser.add_argument('--lambda_parm', type=float,
                         default=10.0, help='Distillation loss hyperparameter')
+    parser.add_argument('--preset_max_num_nodes', type=int,
+                        default=0, help='Distillation loss hyperparameter')
     add_other_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
@@ -60,6 +62,6 @@ if __name__ == '__main__':
                   val is not None}
     if args.gpu_id is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(map(str, args.gpu_id))
-    run_model(task=args.task, model_name=args.model, dataset_name=args.dataset,
+    run_incr_model(task=args.task, model_name=args.model, dataset_name=args.dataset,
               config_file=args.config_file, saved_model=args.saved_model,
               train=args.train, other_args=other_args)

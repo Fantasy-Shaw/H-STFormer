@@ -18,7 +18,7 @@ def genPeMS04():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS04-ST60"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS04ST60"),
         rdShuffleLength=184,
         timeBoundary=datetime.strptime("2018-02-04", "%Y-%m-%d"),
     )
@@ -28,7 +28,7 @@ def genPeMS04():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS04-ST80"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS04ST80"),
         rdShuffleLength=246,
         timeBoundary=datetime.strptime("2018-02-15", "%Y-%m-%d"),
     )
@@ -38,7 +38,7 @@ def genPeMS04():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS04-T60"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS04T60"),
         timeBoundary=datetime.strptime("2018-02-04", "%Y-%m-%d"),
     )
     IncrementalDataGenerator(
@@ -47,7 +47,7 @@ def genPeMS04():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS04\PeMS04.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS04-T80"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS04T80"),
         timeBoundary=datetime.strptime("2018-02-15", "%Y-%m-%d"),
     )
     return
@@ -60,7 +60,7 @@ def genPeMS07():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS07-ST60"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS07ST60"),
         rdShuffleLength=530,
         timeBoundary=datetime.strptime("2017-06-25", "%Y-%m-%d"),
     )
@@ -70,7 +70,7 @@ def genPeMS07():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS07-ST80"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS07ST80"),
         rdShuffleLength=706,
         timeBoundary=datetime.strptime("2017-07-13", "%Y-%m-%d"),
     )
@@ -80,7 +80,7 @@ def genPeMS07():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS07-T60"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS07T60"),
         timeBoundary=datetime.strptime("2017-06-25", "%Y-%m-%d"),
     )
     IncrementalDataGenerator(
@@ -89,7 +89,7 @@ def genPeMS07():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS07\PeMS07.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS07-T80"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS07T80"),
         timeBoundary=datetime.strptime("2017-07-13", "%Y-%m-%d"),
     )
     return
@@ -102,7 +102,7 @@ def genPeMS08():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS08-ST60"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS08ST60"),
         rdShuffleLength=102,
         timeBoundary=datetime.strptime("2016-08-06", "%Y-%m-%d"),
     )
@@ -112,7 +112,7 @@ def genPeMS08():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS08-ST80"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS08ST80"),
         rdShuffleLength=136,
         timeBoundary=datetime.strptime("2016-08-18", "%Y-%m-%d"),
     )
@@ -122,7 +122,7 @@ def genPeMS08():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS08-T60"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS08T60"),
         timeBoundary=datetime.strptime("2016-08-06", "%Y-%m-%d"),
     )
     IncrementalDataGenerator(
@@ -131,14 +131,14 @@ def genPeMS08():
         fullDynaFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.dyna"),
         fullGeoFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.geo"),
         fullRelFile=os.path.join("..", r"raw_data\PeMS08\PeMS08.rel"),
-        outPutDir=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS08-T80"),
+        outPutDirPrefix=os.path.join("..", r"raw_data\__PreProcessOutput\PeMS08T80"),
         timeBoundary=datetime.strptime("2016-08-18", "%Y-%m-%d"),
     )
     return
 
 
 if __name__ == "__main__":
-    # genPeMS03()
+    genPeMS03()
     genPeMS04()
     genPeMS07()
     genPeMS08()

@@ -7,6 +7,8 @@ from libcity.data.dataset import TrafficStatePointDataset
 from libcity.data.utils import generate_dataloader
 from tslearn.clustering import TimeSeriesKMeans, KShape
 
+from numba import jit
+
 
 class MyFormerDataset(TrafficStatePointDataset):
 
@@ -23,6 +25,7 @@ class MyFormerDataset(TrafficStatePointDataset):
         self.n_cluster = config.get("n_cluster", 16)
         self.cluster_max_iter = config.get("cluster_max_iter", 5)
         self.cluster_method = config.get("cluster_method", "kshape")
+        self.num_nodes = config.get('preset_max_num_nodes', 0)
 
     def _get_dtw(self):
         cache_path = './libcity/cache/dataset_cache/dtw_' + self.dataset + '.npy'
@@ -50,7 +53,8 @@ class MyFormerDataset(TrafficStatePointDataset):
     def _load_geo(self):
         geofile = pd.read_csv(self.data_path + self.geo_file + '.geo')
         self.geo_ids = list(geofile['geo_id'])
-        self.num_nodes = 1000
+        if self.num_nodes == 0:
+            self.num_nodes = len(self.geo_ids)
         self.geo_to_ind = {}
         for index, idx in enumerate(self.geo_ids):
             self.geo_to_ind[idx] = index

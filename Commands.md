@@ -1,7 +1,8 @@
 ## Commands
 ### PeMS04 Spatial-Temporal 60%
 ```shell
-python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04ST60Stage1 --exp_id pems04st60stage1 --config_file PeMS04
+python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04ST60Stage1 --exp_id pems04st60stage1 \
+--config_file PeMS04
 ```
 ```shell
 python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04ST60Stage2 --is_stage2 True \

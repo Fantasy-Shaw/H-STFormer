@@ -75,7 +75,7 @@ dependencies:
   - pycparser=2.21=pyhd3eb1b0_0
   - pyopenssl=23.0.0=py39h06a4308_0
   - pysocks=1.7.1=py39h06a4308_0
-  - python=3.9.16=h7a1cb2a_2
+  - python=3.10
   - pytorch=2.0.1=py3.9_cuda11.7_cudnn8.5.0_0
   - pytorch-cuda=11.7=h778d358_5
   - pytorch-mutex=1.0=cuda

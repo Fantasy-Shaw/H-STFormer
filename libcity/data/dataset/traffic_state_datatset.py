@@ -34,7 +34,8 @@ class TrafficStateDataset(AbstractDataset):
         self.data_col = self.config.get('data_col', '')
         self.parameters_str = \
             str(self.dataset) + '_' + str(self.input_window) + '_' + str(self.output_window) + '_' \
-            + str(self.train_rate) + '_' + str(self.part_train_rate) + '_' + str(self.eval_rate) + '_' + str(self.scaler_type) + '_' \
+            + str(self.train_rate) + '_' + str(self.part_train_rate) + '_' + str(self.eval_rate) + '_' + str(
+                self.scaler_type) + '_' \
             + str(self.batch_size) + '_' + str(self.load_external) + '_' + str(self.add_time_in_day) + '_' \
             + str(self.add_day_in_week) + '_' + str(self.pad_with_last_sample) + '_' + str("".join(self.data_col))
         self.cache_file_name = os.path.join('./libcity/cache/dataset_cache/',
@@ -64,7 +65,7 @@ class TrafficStateDataset(AbstractDataset):
         self.ext_scaler = None
         self.feature_dim = 0
         self.ext_dim = 0
-        self.num_nodes = 0
+        self.num_nodes = config.get('preset_max_num_nodes', 0)
         self.num_batches = 0
         self._logger = getLogger()
         self.rank = self.config.get('rank', 0)
@@ -81,7 +82,8 @@ class TrafficStateDataset(AbstractDataset):
     def _load_geo(self):
         geofile = pd.read_csv(self.data_path + self.geo_file + '.geo')
         self.geo_ids = list(geofile['geo_id'])
-        self.num_nodes = len(self.geo_ids)
+        if self.num_nodes == 0:
+            self.num_nodes = len(self.geo_ids)
         self.geo_to_ind = {}
         for index, idx in enumerate(self.geo_ids):
             self.geo_to_ind[idx] = index
@@ -90,7 +92,8 @@ class TrafficStateDataset(AbstractDataset):
     def _load_grid_geo(self):
         geofile = pd.read_csv(self.data_path + self.geo_file + '.geo')
         self.geo_ids = list(geofile['geo_id'])
-        self.num_nodes = len(self.geo_ids)
+        if self.num_nodes == 0:
+            self.num_nodes = len(self.geo_ids)
         self.geo_to_ind = {}
         self.geo_to_rc = {}
         for index, idx in enumerate(self.geo_ids):
@@ -120,7 +123,7 @@ class TrafficStateDataset(AbstractDataset):
                 self.weight_col = relfile.columns[-1]
                 self.distance_df = relfile[~relfile[self.weight_col].isna()][[
                     'origin_id', 'destination_id', self.weight_col]]
-        self.adj_mx = np.zeros((len(self.geo_ids), len(self.geo_ids)), dtype=np.float16)
+        self.adj_mx = np.zeros((self.num_nodes, self.num_nodes), dtype=np.float16)
         if self.init_weight_inf_or_zero.lower() == 'inf' and self.set_weight_link_or_dist.lower() != 'link':
             self.adj_mx[:] = np.inf
         for row in self.distance_df.values:
@@ -188,7 +191,7 @@ class TrafficStateDataset(AbstractDataset):
         len_time = len(self.timesolts)
         data = []
         for i in range(0, df.shape[0], len_time):
-            data.append(df[i:i+len_time].values)
+            data.append(df[i:i + len_time].values)
         data = np.array(data, dtype=np.float16)
         data = data.swapaxes(0, 1)
         self._logger.info("Loaded file " + filename + '.dyna' + ', shape=' + str(data.shape))
@@ -480,7 +483,7 @@ class TrafficStateDataset(AbstractDataset):
         data_list = [df]
         if self.add_time_in_day and not is_time_nan:
             time_ind = (self.timesolts - self.timesolts.astype("datetime64[D]")) / np.timedelta64(1, "D")
-            time_in_day = np.tile(time_ind, [1, len_row, len_column, len_row, len_column, 1]).\
+            time_in_day = np.tile(time_ind, [1, len_row, len_column, len_row, len_column, 1]). \
                 transpose((5, 1, 2, 3, 4, 0))
             data_list.append(time_in_day)
         if self.add_day_in_week and not is_time_nan:
@@ -560,7 +563,8 @@ class TrafficStateDataset(AbstractDataset):
         num_train = round(num_samples * self.train_rate)
         num_val = num_samples - num_test - num_train
 
-        x_train, y_train = x[int(num_train*(1 - self.part_train_rate)):num_train], y[int(num_train*(1 - self.part_train_rate)):num_train]
+        x_train, y_train = x[int(num_train * (1 - self.part_train_rate)):num_train], y[int(num_train * (
+                1 - self.part_train_rate)):num_train]
         x_val, y_val = x[num_train: num_train + num_val], y[num_train: num_train + num_val]
         x_test, y_test = x[-num_test:], y[-num_test:]
         self._logger.info("train\t" + "x: " + str(x_train.shape) + ", y: " + str(y_train.shape))
