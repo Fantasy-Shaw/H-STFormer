@@ -1,5 +1,4 @@
-import _thread
-import gc
+from multiprocessing import Pool
 from datetime import datetime
 import os
 
@@ -138,7 +137,10 @@ def genPeMS08():
 
 
 if __name__ == "__main__":
-    genPeMS03()
-    genPeMS04()
-    genPeMS07()
-    genPeMS08()
+    P = Pool(processes=20)
+    P.apply_async(genPeMS03, ())
+    P.apply_async(genPeMS04, ())
+    P.apply_async(genPeMS07, ())
+    P.apply_async(genPeMS08, ())
+    P.close()
+    P.join()

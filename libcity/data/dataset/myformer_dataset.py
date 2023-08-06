@@ -6,8 +6,14 @@ from tqdm import tqdm
 from libcity.data.dataset import TrafficStatePointDataset
 from libcity.data.utils import generate_dataloader
 from tslearn.clustering import TimeSeriesKMeans, KShape
+from multiprocessing import Pool
 
-from numba import jit
+
+def mp_dtw(objs):
+    mp_data_mean = objs[0]
+    mp_i = objs[1]
+    j = objs[2]
+    return fastdtw(mp_data_mean[:, mp_i, :], mp_data_mean[:, j, :], radius=6)
 
 
 class MyFormerDataset(TrafficStatePointDataset):
@@ -27,6 +33,9 @@ class MyFormerDataset(TrafficStatePointDataset):
         self.cluster_method = config.get("cluster_method", "kshape")
         self.num_nodes = config.get('preset_max_num_nodes', 0)
 
+        self.mp_i = 0
+        self.mp_data_mean: np.ndarray = np.ndarray(shape=[3, 3, 3])
+
     def _get_dtw(self):
         cache_path = './libcity/cache/dataset_cache/dtw_' + self.dataset + '.npy'
         for ind, filename in enumerate(self.data_files):
@@ -40,8 +49,15 @@ class MyFormerDataset(TrafficStatePointDataset):
                  for i in range(df.shape[0] // (24 * self.points_per_hour))], axis=0)
             dtw_distance = np.zeros((self.num_nodes, self.num_nodes))
             for i in tqdm(range(self.num_nodes)):
+                # Multiprocessing
+                pool = Pool(processes=14)
+                args = [(data_mean, i, j) for j in range(i, self.num_nodes)]
+                _dtw_distance_dim2 = pool.map(mp_dtw, args)
                 for j in range(i, self.num_nodes):
-                    dtw_distance[i][j], _ = fastdtw(data_mean[:, i, :], data_mean[:, j, :], radius=6)
+                    dtw_distance[i][j], _ = _dtw_distance_dim2[j - i]
+                # [Deprecated] dtw with single process.
+                # for j in range(i, self.num_nodes):
+                #     dtw_distance[i][j], _ = fastdtw(data_mean[:, i, :], data_mean[:, j, :], radius=6)
             for i in range(self.num_nodes):
                 for j in range(i):
                     dtw_distance[i][j] = dtw_distance[j][i]
