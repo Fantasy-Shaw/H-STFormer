@@ -31,7 +31,7 @@ class MyFormerDataset(TrafficStatePointDataset):
         self.n_cluster = config.get("n_cluster", 16)
         self.cluster_max_iter = config.get("cluster_max_iter", 5)
         self.cluster_method = config.get("cluster_method", "kshape")
-        self.is_quick_debug_mode = config.get("is_quick_debug_mode", False)
+        self.is_quick_debug_mode = config.get("is_quick_debug_mode", True)
 
         self.mp_i = 0
         self.mp_data_mean: np.ndarray = np.ndarray(shape=[3, 3, 3])
@@ -146,7 +146,7 @@ class MyFormerDataset(TrafficStatePointDataset):
             # For quickly debugging, don't calculate pattern key.
             self.pattern_key_file = os.path.join(
                 './libcity/cache/dataset_cache/', 'pattern_keys_{}_{}_{}_{}_{}_{}'.format(
-                    self.cluster_method, self.dataset[:6], self.cand_key_days, self.s_attn_size, self.n_cluster,
+                    self.cluster_method, self.dataset[0:6], self.cand_key_days, self.s_attn_size, self.n_cluster,
                     self.cluster_max_iter))
             self._logger.info("Using quick-debug-mode, won't calculate clustering pattern key.")
         else:

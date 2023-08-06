@@ -54,7 +54,7 @@ if __name__ == '__main__':
                         default=10.0, help='Distillation loss hyperparameter')
     parser.add_argument('--preset_max_num_nodes', type=int,
                         default=0, help='Distillation loss hyperparameter')
-    parser.add_argument('--"is_quick_debug_mode"', type=str2bool,
+    parser.add_argument('--is_quick_debug_mode', type=str2bool,
                         default=False,
                         help="If enabled, using quick-debug-mode, no calculating clustering pattern key.")
     add_other_args(parser)
