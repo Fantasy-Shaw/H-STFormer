@@ -65,7 +65,6 @@ class TrafficStateDataset(AbstractDataset):
         self.ext_scaler = None
         self.feature_dim = 0
         self.ext_dim = 0
-        self.num_nodes = config.get('preset_max_num_nodes', 0)
         self.num_batches = 0
         self._logger = getLogger()
         self.rank = self.config.get('rank', 0)
@@ -82,8 +81,7 @@ class TrafficStateDataset(AbstractDataset):
     def _load_geo(self):
         geofile = pd.read_csv(self.data_path + self.geo_file + '.geo')
         self.geo_ids = list(geofile['geo_id'])
-        if self.num_nodes == 0:
-            self.num_nodes = len(self.geo_ids)
+        self.num_nodes = len(self.geo_ids)
         self.geo_to_ind = {}
         for index, idx in enumerate(self.geo_ids):
             self.geo_to_ind[idx] = index
@@ -92,8 +90,7 @@ class TrafficStateDataset(AbstractDataset):
     def _load_grid_geo(self):
         geofile = pd.read_csv(self.data_path + self.geo_file + '.geo')
         self.geo_ids = list(geofile['geo_id'])
-        if self.num_nodes == 0:
-            self.num_nodes = len(self.geo_ids)
+        self.num_nodes = len(self.geo_ids)
         self.geo_to_ind = {}
         self.geo_to_rc = {}
         for index, idx in enumerate(self.geo_ids):

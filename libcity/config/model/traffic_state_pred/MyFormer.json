@@ -1,8 +1,9 @@
 {
     "embed_dim": 64,
     "skip_dim": 256,
-    "geo_num_heads": 4,
+    "geo_num_heads": 3,
     "sem_num_heads": 2,
+    "hub_num_heads": 1,
     "t_num_heads": 2,
     "mlp_ratio": 4,
     "qkv_bias": true,
@@ -14,7 +15,6 @@
     "enc_depth": 6,
     "type_ln": "post",
     "type_short_path": "hop",
-
     "scaler": "standard",
     "load_external": true,
     "normal_external": false,
@@ -22,7 +22,6 @@
     "add_time_in_day": true,
     "add_day_in_week": true,
     "batch_size": 16,
-
     "seed": 0,
     "max_epoch": 300,
     "learner": "adamw",

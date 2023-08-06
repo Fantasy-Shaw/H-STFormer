@@ -31,7 +31,7 @@ class MyFormerDataset(TrafficStatePointDataset):
         self.n_cluster = config.get("n_cluster", 16)
         self.cluster_max_iter = config.get("cluster_max_iter", 5)
         self.cluster_method = config.get("cluster_method", "kshape")
-        self.num_nodes = config.get('preset_max_num_nodes', 0)
+        self.is_quick_debug_mode = config.get("is_quick_debug_mode", False)
 
         self.mp_i = 0
         self.mp_data_mean: np.ndarray = np.ndarray(shape=[3, 3, 3])
@@ -69,8 +69,7 @@ class MyFormerDataset(TrafficStatePointDataset):
     def _load_geo(self):
         geofile = pd.read_csv(self.data_path + self.geo_file + '.geo')
         self.geo_ids = list(geofile['geo_id'])
-        if self.num_nodes == 0:
-            self.num_nodes = len(self.geo_ids)
+        self.num_nodes = len(self.geo_ids)
         self.geo_to_ind = {}
         for index, idx in enumerate(self.geo_ids):
             self.geo_to_ind[idx] = index
@@ -143,10 +142,18 @@ class MyFormerDataset(TrafficStatePointDataset):
                                 self.batch_size, self.num_workers, pad_with_last_sample=self.pad_with_last_sample,
                                 distributed=self.distributed)
         self.num_batches = len(self.train_dataloader)
-        self.pattern_key_file = os.path.join(
-            './libcity/cache/dataset_cache/', 'pattern_keys_{}_{}_{}_{}_{}_{}'.format(
-                self.cluster_method, self.dataset, self.cand_key_days, self.s_attn_size, self.n_cluster,
-                self.cluster_max_iter))
+        if self.is_quick_debug_mode:
+            # For quickly debugging, don't calculate pattern key.
+            self.pattern_key_file = os.path.join(
+                './libcity/cache/dataset_cache/', 'pattern_keys_{}_{}_{}_{}_{}_{}'.format(
+                    self.cluster_method, self.dataset[:6], self.cand_key_days, self.s_attn_size, self.n_cluster,
+                    self.cluster_max_iter))
+            self._logger.info("Using quick-debug-mode, won't calculate clustering pattern key.")
+        else:
+            self.pattern_key_file = os.path.join(
+                './libcity/cache/dataset_cache/', 'pattern_keys_{}_{}_{}_{}_{}_{}'.format(
+                    self.cluster_method, self.dataset, self.cand_key_days, self.s_attn_size, self.n_cluster,
+                    self.cluster_max_iter))
         if not os.path.exists(self.pattern_key_file + '.npy'):
             cand_key_time_steps = self.cand_key_days * self.points_per_day
             pattern_cand_keys = (x_train[:cand_key_time_steps, :self.s_attn_size, :, :self.output_dim]

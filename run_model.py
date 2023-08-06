@@ -54,6 +54,9 @@ if __name__ == '__main__':
                         default=10.0, help='Distillation loss hyperparameter')
     parser.add_argument('--preset_max_num_nodes', type=int,
                         default=0, help='Distillation loss hyperparameter')
+    parser.add_argument('--"is_quick_debug_mode"', type=str2bool,
+                        default=False,
+                        help="If enabled, using quick-debug-mode, no calculating clustering pattern key.")
     add_other_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
@@ -63,5 +66,5 @@ if __name__ == '__main__':
     if args.gpu_id is not None:
         os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(map(str, args.gpu_id))
     run_incr_model(task=args.task, model_name=args.model, dataset_name=args.dataset,
-              config_file=args.config_file, saved_model=args.saved_model,
-              train=args.train, other_args=other_args)
+                   config_file=args.config_file, saved_model=args.saved_model,
+                   train=args.train, other_args=other_args)

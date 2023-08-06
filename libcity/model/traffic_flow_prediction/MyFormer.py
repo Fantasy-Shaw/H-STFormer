@@ -125,12 +125,13 @@ class STSelfAttention(nn.Module):
             qkv_bias=False, attn_drop=0., proj_drop=0., device=torch.device('cpu'), output_dim=1,
     ):
         super().__init__()
-        assert dim % (geo_num_heads + sem_num_heads + t_num_heads) == 0
+        print(dim, geo_num_heads, sem_num_heads, t_num_heads, hub_num_heads)
+        assert dim % (geo_num_heads + sem_num_heads + hub_num_heads + t_num_heads) == 0
         self.geo_num_heads = geo_num_heads
         self.sem_num_heads = sem_num_heads
         self.hub_num_heads = hub_num_heads
         self.t_num_heads = t_num_heads
-        self.head_dim = dim // (geo_num_heads + sem_num_heads + t_num_heads)
+        self.head_dim = dim // (geo_num_heads + sem_num_heads + hub_num_heads + t_num_heads)
         self.scale = self.head_dim ** -0.5
         self.device = device
         self.s_attn_size = s_attn_size
@@ -139,7 +140,7 @@ class STSelfAttention(nn.Module):
         self.sem_ratio = sem_num_heads / (geo_num_heads + sem_num_heads + hub_num_heads + t_num_heads)
         # For the extra HubSSA
         self.hub_ratio = hub_num_heads / (geo_num_heads + sem_num_heads + hub_num_heads + t_num_heads)
-        self.t_ratio = 1 - self.geo_ratio - self.sem_ratio
+        self.t_ratio = 1 - self.geo_ratio - self.sem_ratio - self.hub_ratio
         self.output_dim = output_dim
 
         self.pattern_q_linears = nn.ModuleList([
@@ -231,6 +232,7 @@ class STSelfAttention(nn.Module):
         hub_attn = (hub_q @ hub_k.transpose(-2, -1)) * self.scale
         if hub_mask is not None:
             hub_attn.masked_fill_(hub_mask, float('-inf'))
+            # hub_attn.masked_fill_(hub_mask, False)
         hub_attn = hub_attn.softmax(dim=-1)
         hub_attn = self.hub_attn_drop(hub_attn)
         hub_x = (hub_attn @ hub_v).transpose(2, 3).reshape(B, T, N, int(D * self.hub_ratio))
@@ -304,8 +306,8 @@ class TemporalSelfAttention(nn.Module):
 class STEncoderBlock(nn.Module):
 
     def __init__(
-            self, dim, s_attn_size, t_attn_size, geo_num_heads=4, sem_num_heads=2, t_num_heads=2, mlp_ratio=4.,
-            qkv_bias=True, drop=0., attn_drop=0.,
+            self, dim, s_attn_size, t_attn_size, geo_num_heads=4, sem_num_heads=2, hub_num_heads=2, t_num_heads=2,
+            mlp_ratio=4., qkv_bias=True, drop=0., attn_drop=0.,
             drop_path=0., act_layer=nn.GELU, norm_layer=nn.LayerNorm, device=torch.device('cpu'), type_ln="pre",
             output_dim=1,
     ):
@@ -314,7 +316,7 @@ class STEncoderBlock(nn.Module):
         self.norm1 = norm_layer(dim)
         self.st_attn = STSelfAttention(
             dim, s_attn_size, t_attn_size, geo_num_heads=geo_num_heads, sem_num_heads=sem_num_heads,
-            t_num_heads=t_num_heads, qkv_bias=qkv_bias,
+            hub_num_heads=hub_num_heads, t_num_heads=t_num_heads, qkv_bias=qkv_bias,
             attn_drop=attn_drop, proj_drop=drop, device=device, output_dim=output_dim,
         )
         self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
@@ -355,12 +357,12 @@ class MyFormer(AbstractTrafficStateModel):
         sh_mx = data_feature.get('sh_mx')
         self._logger = getLogger()
         self.dataset = config.get('dataset')
-
         self.embed_dim = config.get('embed_dim', 64)
         self.skip_dim = config.get("skip_dim", 256)
         lape_dim = config.get('lape_dim', 8)
-        geo_num_heads = config.get('geo_num_heads', 4)
+        geo_num_heads = config.get('geo_num_heads', 3)
         sem_num_heads = config.get('sem_num_heads', 2)
+        hub_num_heads = config.get('hub_num_heads', 1)
         t_num_heads = config.get('t_num_heads', 2)
         mlp_ratio = config.get("mlp_ratio", 4)
         qkv_bias = config.get("qkv_bias", True)
@@ -421,6 +423,7 @@ class MyFormer(AbstractTrafficStateModel):
             for src, dst in zip(fullRel.origin_id, fullRel.destination_id):
                 self.hub_mask[src][dst] += 1
                 self.hub_mask[dst][src] += 1
+            self.hub_mask = self.hub_mask.bool()
 
         self.pattern_keys = torch.from_numpy(data_feature.get('pattern_keys')).float().to(self.device)
         self.pattern_embeddings = nn.ModuleList([
@@ -436,9 +439,9 @@ class MyFormer(AbstractTrafficStateModel):
         self.encoder_blocks = nn.ModuleList([
             STEncoderBlock(
                 dim=self.embed_dim, s_attn_size=self.s_attn_size, t_attn_size=self.t_attn_size,
-                geo_num_heads=geo_num_heads, sem_num_heads=sem_num_heads, t_num_heads=t_num_heads,
-                mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, drop=drop, attn_drop=attn_drop, drop_path=enc_dpr[i],
-                act_layer=nn.GELU,
+                geo_num_heads=geo_num_heads, sem_num_heads=sem_num_heads, hub_num_heads=hub_num_heads,
+                t_num_heads=t_num_heads, mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, drop=drop,
+                attn_drop=attn_drop, drop_path=enc_dpr[i], act_layer=nn.GELU,
                 norm_layer=partial(nn.LayerNorm, eps=1e-6), device=self.device, type_ln=type_ln,
                 output_dim=self.output_dim,
             ) for i in range(enc_depth)
