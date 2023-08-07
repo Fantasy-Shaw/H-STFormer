@@ -10,7 +10,7 @@ python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04S
 ```
 ### PeMS04 Spatial-Temporal 80%
 ```shell
-python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04ST80Stage1 --exp_id pems04st80stage1 --config_file PeMS04
+python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04ST80Stage1 --exp_id pems04st80stage1 --is_quick_debug_mode True --config_file PeMS04
 ```
 ```shell
 python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04ST60Stage2 --is_stage2 True \

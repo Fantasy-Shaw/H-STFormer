@@ -7,12 +7,14 @@ from ray import tune
 from libcity.executor.traffic_state_executor import TrafficStateExecutor
 import scipy.sparse as sp
 
+from libcity.model import loss
 from libcity.model.loss import masked_huber_loss
 from libcity.pipeline.pipeline import loss_st1_on_raw, loss_st1_on_incr, stage1_executor
 from libcity.pipeline.pipeline import s1_train_data, s1_test_data, s1_valid_data
 from libcity.utils import reduce_array
 from tqdm import tqdm
 import torch.nn.functional as F
+from functools import partial
 
 
 class MyFormerExecutor(TrafficStateExecutor):
@@ -26,7 +28,7 @@ class MyFormerExecutor(TrafficStateExecutor):
         super().__init__(config, model)
         self.lap_mx = self._cal_lape(self.adj_mx).to(self.device)
         self.random_flip = config.get('random_flip', True)
-        self.set_loss = config.get('set_loss', 'masked_mae')
+        self.set_loss = config.get('set_loss', 'huber')
         self.is_stage2 = config.get('is_stage2', False)
         self.temperature = config.get('temperature', 10.0)
         self.lambda_param = config.get('lambda_parm', 10.0)
@@ -168,7 +170,7 @@ class MyFormerExecutor(TrafficStateExecutor):
             # Knowledge distillation
             if self.is_stage2:
                 loss_st2_on_raw = self.get_huber_evaluation(test_dataloader=s1_train_data)  # Z_g_raw
-                loss_st2_on_incr = train_loss   # Z_g_incr
+                loss_st2_on_incr = train_loss  # Z_g_incr
                 _kl1 = F.kl_div(
                     torch.from_numpy(stage1_executor.get_preds(train_dataloader)).softmax(dim=-1) / self.temperature,
                     torch.from_numpy(self.get_preds(s1_train_data)).softmax(dim=-1).log() / self.temperature
@@ -248,6 +250,8 @@ class MyFormerExecutor(TrafficStateExecutor):
                 loss_func = self.model.module.calculate_loss_without_predict
             else:
                 loss_func = self.model.calculate_loss_without_predict
+        # Force None
+        loss_func = self.model.calculate_loss_without_predict
         losses = []
         for batch in train_dataloader:
             batch.to_tensor(self.device)
@@ -259,6 +263,7 @@ class MyFormerExecutor(TrafficStateExecutor):
                 batch_lap_pos_enc = batch_lap_pos_enc * sign_flip.unsqueeze(0)
             y_true = batch['y']
             y_predicted = self.model(batch, batch_lap_pos_enc)
+            # print("y_true\n", y_true, "y_predicted\n", y_predicted)
             loss = loss_func(y_true, y_predicted, batches_seen=batches_seen, set_loss=self.set_loss)
             self._logger.debug(loss.item())
             losses.append(loss.item())
@@ -283,6 +288,8 @@ class MyFormerExecutor(TrafficStateExecutor):
                     loss_func = self.model.module.calculate_loss_without_predict
                 else:
                     loss_func = self.model.calculate_loss_without_predict
+            # Force None
+            loss_func = self.model.calculate_loss_without_predict
             losses = []
             for batch in eval_dataloader:
                 batch.to_tensor(self.device)
