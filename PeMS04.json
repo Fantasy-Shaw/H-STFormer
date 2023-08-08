@@ -4,7 +4,7 @@
     "output_window": 12,
     "train_rate": 0.6,
     "eval_rate": 0.2,
-    "batch_size": 16,
+    "batch_size": 24,
     "add_time_in_day": true,
     "add_day_in_week": true,
     "step_size": 1274,
