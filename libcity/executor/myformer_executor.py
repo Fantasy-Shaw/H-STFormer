@@ -175,16 +175,6 @@ class MyFormerExecutor(TrafficStateExecutor):
             if self.is_stage2:
                 loss_st2_on_raw = self.get_huber_evaluation(test_dataloader=self.stage1_train_data)  # Z_g_raw
                 loss_st2_on_incr = train_loss  # Z_g_incr
-                # _kl1 = F.kl_div(
-                #     torch.from_numpy(self.stage1_executor.get_preds(train_dataloader)).float().softmax(
-                #         dim=-1) / self.temperature,
-                #     torch.from_numpy(self.get_preds(self.stage1_train_data)).float().softmax(dim=-1).log() / self.temperature
-                # ) * (self.lambda_param ** 2) * self.temperature
-                # _kl2 = F.kl_div(
-                #     torch.from_numpy(self.get_preds(train_dataloader)).float().softmax(dim=-1) / self.temperature,
-                #     torch.from_numpy(self.stage1_executor.get_preds(self.stage1_train_data)).float().softmax(
-                #         dim=-1).log() / self.temperature
-                # ) * (self.lambda_param ** 2) * self.temperature
                 _kl1 = F.kl_div(
                     torch.from_numpy(self.stage1_executor.get_preds(self.stage1_train_data)).float().softmax(
                         dim=-1) / self.temperature,
