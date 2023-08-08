@@ -19,19 +19,10 @@ from libcity.config import ConfigParser
 from libcity.data import get_dataset
 from libcity.utils import get_executor, get_model, get_logger, ensure_dir
 
-loss_st1_on_raw = np.inf
-loss_st1_on_incr = np.inf
-stage1_executor = None
-s1_train_data, s1_valid_data, s1_test_data = None, None, None
-s2_train_data, s2_valid_data, s2_test_data = None, None, None
-
 
 def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=None,
                    saved_model=True, train=True, other_args=None,
                    is_stage2=False, stage1_exp_id=None, stage1_dataset_name=None):
-    global loss_st1_on_raw, loss_st1_on_incr
-    global stage1_executor
-    global s1_train_data, s1_valid_data, s1_test_data, s2_train_data, s2_valid_data, s2_test_data
     if not is_stage2:
         run_model(task, model_name, dataset_name, config_file, saved_model, train, other_args)
     else:
@@ -39,16 +30,22 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
             task=task, model=model_name, dataset=stage1_dataset_name, config_file=config_file,
             saved_model=saved_model, train=False, other_args=other_args
         )
+        logger = get_logger(stage1_config)
+        logger.info("This is an incremental stage of training.")
         stage1_config['exp_id'] = stage1_config.get('stage1_exp_id', default=None)
         stage1_dataset = get_dataset(stage1_config)
         s1_train_data, s1_valid_data, s1_test_data = stage1_dataset.get_data()
         stage1_data_feature = stage1_dataset.get_data_feature()
         stage1_model_cache_file = './libcity/cache/{}/model_cache/{}_{}.m'.format(
             stage1_exp_id, model_name, stage1_dataset_name)
+        if not os.path.exists(stage1_model_cache_file):
+            logger.error(
+                "Stage1-model-cache file does not exist. Loading and training exited. stage1_model_cache_file={}",
+                stage1_model_cache_file)
+            return
         stage1_model = get_model(stage1_config, stage1_data_feature)
         stage1_executor = get_executor(stage1_config, stage1_model)
-        loss_st1_on_raw = stage1_executor.get_huber_evaluation(s1_test_data)  # Z_f0_raw
-
+        stage1_executor.load_model(stage1_model_cache_file)
         stage2_config = ConfigParser(task, model_name, dataset_name,
                                      config_file, saved_model, train, other_args)
         stage2_exp_id = stage2_config.get('exp_id', None)
@@ -63,7 +60,7 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
             torch.manual_seed(seed)
             torch.cuda.manual_seed_all(seed)
             torch.backends.cudnn.deterministic = True
-        logger = get_logger(stage2_config)
+        # logger = get_logger(stage2_config)
         logger.info('Begin pipeline, task={}, model_name={}, dataset_name={}, exp_id={}'.
                     format(str(task), str(model_name), str(dataset_name), str(stage2_exp_id)))
         logger.info(stage2_config.config)
@@ -73,8 +70,13 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
         model_cache_file = './libcity/cache/{}/model_cache/{}_{}.m'.format(
             stage2_exp_id, model_name, dataset_name)
         model = get_model(stage2_config, data_feature)
-
-        executor = get_executor(stage2_config, model)
+        # For St2 Exec
+        loss_st1_on_incr = stage1_executor.get_huber_evaluation(s2_train_data)  # Z_f0_incr
+        loss_st1_on_raw = stage1_executor.get_huber_evaluation(s1_test_data)  # Z_f0_raw
+        logger.info("Huber loss of stage1-model on incremental data: loss_st1_on_incr={}.".format(loss_st1_on_incr))
+        executor = get_executor(stage2_config, model, is_MyFormerExec=True,
+                                stage1_train_data=s1_train_data, stage1_executor=stage1_executor,
+                                loss_st1_on_raw=loss_st1_on_raw, loss_st1_on_incr=loss_st1_on_incr)
         if train or not os.path.exists(model_cache_file):
             executor.train(s2_train_data, s2_valid_data)
             if saved_model:
@@ -82,8 +84,6 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
         else:
             executor.load_model(model_cache_file)
         executor.evaluate(s2_test_data)
-
-        loss_st1_on_incr = stage1_executor.get_huber_evaluation(s2_train_data)  # Z_f0_incr
 
 
 def run_model(task=None, model_name=None, dataset_name=None, config_file=None,

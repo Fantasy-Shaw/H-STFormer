@@ -9,8 +9,6 @@ import scipy.sparse as sp
 
 from libcity.model import loss
 from libcity.model.loss import masked_huber_loss
-from libcity.pipeline.pipeline import loss_st1_on_raw, loss_st1_on_incr, stage1_executor
-from libcity.pipeline.pipeline import s1_train_data, s1_test_data, s1_valid_data
 from libcity.utils import reduce_array
 from tqdm import tqdm
 import torch.nn.functional as F
@@ -19,7 +17,9 @@ from functools import partial
 
 class MyFormerExecutor(TrafficStateExecutor):
 
-    def __init__(self, config, model):
+    def __init__(self, config, model,
+                 stage1_train_data=None, stage1_executor=None,
+                 loss_st1_on_raw=None, loss_st1_on_incr=None):
         self.no_load = config.get('no_load', [])
         self.lr_warmup_epoch = config.get("lr_warmup_epoch", 5)
         self.lr_warmup_init = config.get("lr_warmup_init", 1e-6)
@@ -32,6 +32,10 @@ class MyFormerExecutor(TrafficStateExecutor):
         self.is_stage2 = config.get('is_stage2', False)
         self.temperature = config.get('temperature', 10.0)
         self.lambda_param = config.get('lambda_parm', 10.0)
+        self.stage1_train_data = stage1_train_data
+        self.stage1_executor = stage1_executor
+        self.loss_st1_on_raw = loss_st1_on_raw
+        self.loss_st1_on_incr = loss_st1_on_incr
 
     def check_noload(self, k):
         for no_load_para in self.no_load:
@@ -169,18 +173,32 @@ class MyFormerExecutor(TrafficStateExecutor):
             train_loss = np.mean(losses)
             # Knowledge distillation
             if self.is_stage2:
-                loss_st2_on_raw = self.get_huber_evaluation(test_dataloader=s1_train_data)  # Z_g_raw
+                loss_st2_on_raw = self.get_huber_evaluation(test_dataloader=self.stage1_train_data)  # Z_g_raw
                 loss_st2_on_incr = train_loss  # Z_g_incr
+                # _kl1 = F.kl_div(
+                #     torch.from_numpy(self.stage1_executor.get_preds(train_dataloader)).float().softmax(
+                #         dim=-1) / self.temperature,
+                #     torch.from_numpy(self.get_preds(self.stage1_train_data)).float().softmax(dim=-1).log() / self.temperature
+                # ) * (self.lambda_param ** 2) * self.temperature
+                # _kl2 = F.kl_div(
+                #     torch.from_numpy(self.get_preds(train_dataloader)).float().softmax(dim=-1) / self.temperature,
+                #     torch.from_numpy(self.stage1_executor.get_preds(self.stage1_train_data)).float().softmax(
+                #         dim=-1).log() / self.temperature
+                # ) * (self.lambda_param ** 2) * self.temperature
                 _kl1 = F.kl_div(
-                    torch.from_numpy(stage1_executor.get_preds(train_dataloader)).softmax(dim=-1) / self.temperature,
-                    torch.from_numpy(self.get_preds(s1_train_data)).softmax(dim=-1).log() / self.temperature
+                    torch.from_numpy(self.stage1_executor.get_preds(self.stage1_train_data)).float().softmax(
+                        dim=-1) / self.temperature,
+                    torch.from_numpy(self.get_preds(self.stage1_train_data)).float().softmax(
+                        dim=-1).log() / self.temperature
                 ) * (self.lambda_param ** 2) * self.temperature
                 _kl2 = F.kl_div(
-                    torch.from_numpy(self.get_preds(train_dataloader)).softmax(dim=-1) / self.temperature,
-                    torch.from_numpy(stage1_executor.get_preds(s1_train_data)).softmax(dim=-1).log() / self.temperature
+                    torch.from_numpy(self.get_preds(train_dataloader)).float().softmax(dim=-1) / self.temperature,
+                    torch.from_numpy(self.stage1_executor.get_preds(train_dataloader)).float().softmax(
+                        dim=-1).log() / self.temperature
                 ) * (self.lambda_param ** 2) * self.temperature
-                loss1 = loss_st1_on_incr + loss_st2_on_raw + _kl1
-                loss2 = loss_st2_on_incr + loss_st1_on_raw + _kl2
+                # "loss_st1_on_incr" and "loss_st1_on_raw" are const value, maybe they can be omitted.
+                loss1 = self.loss_st1_on_incr + loss_st2_on_raw + _kl1
+                loss2 = loss_st2_on_incr + self.loss_st1_on_raw + _kl2
                 train_loss = loss1 + loss2
             if self.distributed:
                 train_loss = reduce_array(train_loss, self.world_size, self.device)
@@ -340,8 +358,8 @@ class MyFormerExecutor(TrafficStateExecutor):
                 y_pred = self._scaler.inverse_transform(output[..., :self.output_dim])
                 y_truths.append(y_true.cpu().numpy())
                 y_preds.append(y_pred.cpu().numpy())
-            y_preds = np.concatenate(y_preds, axis=0)
-            y_truths = np.concatenate(y_truths, axis=0)
+            y_preds = torch.from_numpy(np.concatenate(y_preds, axis=0))
+            y_truths = torch.from_numpy(np.concatenate(y_truths, axis=0))
         return masked_huber_loss(preds=y_preds, labels=y_truths, delta=2.0)
 
     def get_preds(self, test_dataloader):

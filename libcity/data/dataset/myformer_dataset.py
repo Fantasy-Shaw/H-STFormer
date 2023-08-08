@@ -142,7 +142,7 @@ class MyFormerDataset(TrafficStatePointDataset):
                                 self.batch_size, self.num_workers, pad_with_last_sample=self.pad_with_last_sample,
                                 distributed=self.distributed)
         self.num_batches = len(self.train_dataloader)
-        if self.is_quick_debug_mode:
+        if self.is_quick_debug_mode and self.dataset[0:4] == "PeMS":
             # For quickly debugging, don't calculate pattern key.
             self.pattern_key_file = os.path.join(
                 './libcity/cache/dataset_cache/', 'pattern_keys_{}_{}_{}_{}_{}_{}'.format(

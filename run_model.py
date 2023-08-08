@@ -67,4 +67,5 @@ if __name__ == '__main__':
         os.environ["CUDA_VISIBLE_DEVICES"] = ','.join(map(str, args.gpu_id))
     run_incr_model(task=args.task, model_name=args.model, dataset_name=args.dataset,
                    config_file=args.config_file, saved_model=args.saved_model,
-                   train=args.train, other_args=other_args)
+                   train=args.train, other_args=other_args, is_stage2=args.is_stage2,
+                   stage1_exp_id=args.stage1_exp_id, stage1_dataset_name=args.stage_1_dataset)
