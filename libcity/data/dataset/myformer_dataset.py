@@ -82,8 +82,7 @@ class MyFormerDataset(TrafficStatePointDataset):
             self.num_nodes) + ', len(self.geo_ids)=' + str(len(self.geo_ids)))
 
     def _load_rel(self):
-        # Multiprocessing is disabled, it won't bring improvements here.
-        # pool = Pool(processes=20)
+        # pool = Pool()
         self.sd_mx = None
         super()._load_rel()
         self.raw_rel_dataframe = pd.read_csv(self.data_path + self.rel_file + '.rel')
@@ -96,15 +95,18 @@ class MyFormerDataset(TrafficStatePointDataset):
                 self.sh_mx[i, i] = 0
             for k in range(self.num_nodes):
                 for i in range(self.num_nodes):
-                    # Multiprocessing is disabled, it won't bring improvements here.
-                    # args = [(self.sh_mx, i, j, k) for j in range(self.num_nodes)]
-                    # self.sh_mx[i] = np.array(pool.map(mp_sh_mx, args))[0:self.num_nodes]
+                    # Multiprocessing
+                    # self.sh_mx[i] = np.array(
+                    #     pool.map(min, [(self.sh_mx[i, j], self.sh_mx[i, k] + self.sh_mx[k, j], 511)
+                    #                    for j in range(self.num_nodes)])
+                    # )
                     # with single process.
                     for j in range(self.num_nodes):
                         self.sh_mx[i, j] = min(self.sh_mx[i, j], self.sh_mx[i, k] + self.sh_mx[k, j], 511)
             np.save('{}.npy'.format(self.dataset), self.sh_mx)
 
     def _calculate_adjacency_matrix(self):
+        # pool = Pool()
         self._logger.info("Start Calculate the weight by Gauss kernel!")
         self.sd_mx = self.adj_mx.copy()
         distances = self.adj_mx[~np.isinf(self.adj_mx)].flatten()
@@ -115,6 +117,12 @@ class MyFormerDataset(TrafficStatePointDataset):
             self.sd_mx[self.adj_mx == 0] = np.inf
             for k in range(self.num_nodes):
                 for i in range(self.num_nodes):
+                    # Multiprocessing
+                    # self.sd_mx[i] = np.array(
+                    #     pool.map(min, [(self.sd_mx[i, j], self.sd_mx[i, k] + self.sd_mx[k, j])
+                    #                    for j in range(self.num_nodes)])
+                    # )
+                    # with single process.
                     for j in range(self.num_nodes):
                         self.sd_mx[i, j] = min(self.sd_mx[i, j], self.sd_mx[i, k] + self.sd_mx[k, j])
 

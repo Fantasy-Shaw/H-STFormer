@@ -20,3 +20,6 @@ if __name__ == "__main__":
     arr1[1] = arr2
     print(arr1)
     print(arr2[0:2])
+
+    tp1 = (114514, 1919810, 12345, 114, 514)
+    print(min(tp1))
