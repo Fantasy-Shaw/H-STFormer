@@ -16,6 +16,11 @@ def mp_dtw(objs):
     return fastdtw(mp_data_mean[:, mp_i, :], mp_data_mean[:, j, :], radius=6)
 
 
+def mp_sh_mx(objs):
+    sh_mx, i, j, k = objs[0], objs[1], objs[2], objs[3]
+    return min(sh_mx[i, j], sh_mx[i, k] + sh_mx[k, j], 511)
+
+
 class MyFormerDataset(TrafficStatePointDataset):
 
     def __init__(self, config):
@@ -38,6 +43,8 @@ class MyFormerDataset(TrafficStatePointDataset):
 
     def _get_dtw(self):
         cache_path = './libcity/cache/dataset_cache/dtw_' + self.dataset + '.npy'
+        # Multiprocessing
+        pool = Pool()
         for ind, filename in enumerate(self.data_files):
             if ind == 0:
                 df = self._load_dyna(filename)
@@ -49,8 +56,6 @@ class MyFormerDataset(TrafficStatePointDataset):
                  for i in range(df.shape[0] // (24 * self.points_per_hour))], axis=0)
             dtw_distance = np.zeros((self.num_nodes, self.num_nodes))
             for i in tqdm(range(self.num_nodes)):
-                # Multiprocessing
-                pool = Pool(processes=14)
                 args = [(data_mean, i, j) for j in range(i, self.num_nodes)]
                 _dtw_distance_dim2 = pool.map(mp_dtw, args)
                 for j in range(i, self.num_nodes):
@@ -77,6 +82,8 @@ class MyFormerDataset(TrafficStatePointDataset):
             self.num_nodes) + ', len(self.geo_ids)=' + str(len(self.geo_ids)))
 
     def _load_rel(self):
+        # Multiprocessing is disabled, it won't bring improvements here.
+        # pool = Pool(processes=20)
         self.sd_mx = None
         super()._load_rel()
         self.raw_rel_dataframe = pd.read_csv(self.data_path + self.rel_file + '.rel')
@@ -89,6 +96,10 @@ class MyFormerDataset(TrafficStatePointDataset):
                 self.sh_mx[i, i] = 0
             for k in range(self.num_nodes):
                 for i in range(self.num_nodes):
+                    # Multiprocessing is disabled, it won't bring improvements here.
+                    # args = [(self.sh_mx, i, j, k) for j in range(self.num_nodes)]
+                    # self.sh_mx[i] = np.array(pool.map(mp_sh_mx, args))[0:self.num_nodes]
+                    # with single process.
                     for j in range(self.num_nodes):
                         self.sh_mx[i, j] = min(self.sh_mx[i, j], self.sh_mx[i, k] + self.sh_mx[k, j], 511)
             np.save('{}.npy'.format(self.dataset), self.sh_mx)
