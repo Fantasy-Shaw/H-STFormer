@@ -7,14 +7,14 @@ import numpy as np
 
 
 def get_executor(config, model, is_MyFormerExec=False,
-                 stage1_train_data=None, stage1_executor=None,
-                 loss_st1_on_raw=None, loss_st1_on_incr=None):
+                 stage1_train_data=None, stage1_val_data=None,
+                 stage1_executor=None, loss_st1_on_raw=None, loss_st1_on_incr=None):
     try:
         if is_MyFormerExec:
             return getattr(importlib.import_module('libcity.executor'),
                            config['executor'])(config, model, stage1_train_data=stage1_train_data,
-                                               stage1_executor=stage1_executor, loss_st1_on_raw=loss_st1_on_raw,
-                                               loss_st1_on_incr=loss_st1_on_incr)
+                                               stage1_val_data=stage1_val_data, stage1_executor=stage1_executor,
+                                               loss_st1_on_raw=loss_st1_on_raw, loss_st1_on_incr=loss_st1_on_incr)
         else:
             return getattr(importlib.import_module('libcity.executor'),
                            config['executor'])(config, model)

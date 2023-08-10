@@ -75,7 +75,8 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
         loss_st1_on_raw = stage1_executor.get_huber_evaluation(s1_test_data)  # Z_f0_raw
         logger.info("Huber loss of stage1-model on incremental data: loss_st1_on_incr={}.".format(loss_st1_on_incr))
         executor = get_executor(stage2_config, model, is_MyFormerExec=True,
-                                stage1_train_data=s1_train_data, stage1_executor=stage1_executor,
+                                stage1_train_data=s1_train_data, stage1_val_data=s1_valid_data,
+                                stage1_executor=stage1_executor,
                                 loss_st1_on_raw=loss_st1_on_raw, loss_st1_on_incr=loss_st1_on_incr)
         if train or not os.path.exists(model_cache_file):
             executor.train(s2_train_data, s2_valid_data)

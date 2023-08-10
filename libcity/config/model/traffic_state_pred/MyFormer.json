@@ -36,7 +36,7 @@
     "clip_grad_norm": true,
     "max_grad_norm": 5,
     "use_early_stop": true,
-    "patience": 50,
+    "patience": 25,
     "step_size": 1562,
     "task_level": 0,
     "use_curriculum_learning": true,

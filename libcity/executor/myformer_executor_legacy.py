@@ -18,7 +18,7 @@ from functools import partial
 class MyFormerExecutor(TrafficStateExecutor):
 
     def __init__(self, config, model,
-                 stage1_train_data=None, stage1_val_data=None, stage1_executor=None,
+                 stage1_train_data=None, stage1_executor=None,
                  loss_st1_on_raw=None, loss_st1_on_incr=None):
         self.no_load = config.get('no_load', [])
         self.lr_warmup_epoch = config.get("lr_warmup_epoch", 5)
@@ -33,7 +33,6 @@ class MyFormerExecutor(TrafficStateExecutor):
         self.temperature = config.get('temperature', 10.0)
         self.lambda_param = config.get('lambda_parm', 10.0)
         self.stage1_train_data = stage1_train_data
-        self.stage1_val_data = stage1_val_data
         self.stage1_executor = stage1_executor
         self.loss_st1_on_raw = loss_st1_on_raw
         self.loss_st1_on_incr = loss_st1_on_incr
@@ -203,24 +202,6 @@ class MyFormerExecutor(TrafficStateExecutor):
             eval_time.append(end_time - t2)
 
             epoch_time = end_time - start_time
-            if self.is_stage2:
-                loss_st2_on_raw = self.get_huber_evaluation(test_dataloader=self.stage1_val_data)  # Z_g_raw
-                loss_st2_on_incr = val_loss  # Z_g_incr
-                _kl1 = F.kl_div(
-                    torch.from_numpy(self.stage1_executor.get_preds(self.stage1_val_data)).float().softmax(
-                        dim=-1) / self.temperature,
-                    torch.from_numpy(self.get_preds(self.stage1_val_data)).float().softmax(
-                        dim=-1).log() / self.temperature
-                ) * (self.lambda_param ** 2) * self.temperature
-                _kl2 = F.kl_div(
-                    torch.from_numpy(self.get_preds(eval_dataloader)).float().softmax(dim=-1) / self.temperature,
-                    torch.from_numpy(self.stage1_executor.get_preds(eval_dataloader)).float().softmax(
-                        dim=-1).log() / self.temperature
-                ) * (self.lambda_param ** 2) * self.temperature
-                # "loss_st1_on_incr" and "loss_st1_on_raw" are const value, maybe they can be omitted.
-                loss1 = self.loss_st1_on_incr + loss_st2_on_raw + _kl1
-                loss2 = loss_st2_on_incr + self.loss_st1_on_raw + _kl2
-                val_loss = loss1 + loss2
             if self.distributed:
                 epoch_time = reduce_array(np.array(epoch_time), self.world_size, self.device)
 
