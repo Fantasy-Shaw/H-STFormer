@@ -526,8 +526,10 @@ class TrafficStateDataset(AbstractDataset):
             y_t = df[t + y_offsets, ...]
             x.append(x_t)
             y.append(y_t)
-        x = np.stack(x, axis=0)
-        y = np.stack(y, axis=0)
+        x = np.stack(x, axis=0).astype(np.float16)  # use float16 if PeMS07
+        y = np.stack(y, axis=0).astype(np.float16)
+        # x = np.stack(x, axis=0)
+        # y = np.stack(y, axis=0)
         return x, y
 
     def _generate_data(self):

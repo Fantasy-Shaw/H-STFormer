@@ -166,6 +166,11 @@ class MyFormerExecutor(TrafficStateExecutor):
         self._logger.info("num_batches:{}".format(num_batches))
 
         batches_seen = num_batches * self._epoch_num
+        if self.is_stage2:
+            s1_exec_pred_s1_train = self.stage1_executor.get_preds(self.stage1_train_data)
+            s1_exec_pred_s1_val = self.stage1_executor.get_preds(self.stage1_val_data)
+            s1_exec_pred_s2_train = self.stage1_executor.get_preds(train_dataloader)
+            s1_exec_pred_s2_val = self.stage1_executor.get_preds(eval_dataloader)
         for epoch_idx in range(self._epoch_num, self.epochs):
             start_time = time.time()
             losses, batches_seen = self._train_epoch(train_dataloader, epoch_idx, batches_seen, self.loss_func)
@@ -177,14 +182,14 @@ class MyFormerExecutor(TrafficStateExecutor):
                 loss_st2_on_raw = self.get_huber_evaluation(test_dataloader=self.stage1_train_data)  # Z_g_raw
                 loss_st2_on_incr = train_loss  # Z_g_incr
                 _kl1 = F.kl_div(
-                    torch.from_numpy(self.stage1_executor.get_preds(self.stage1_train_data)).float().softmax(
+                    torch.from_numpy(s1_exec_pred_s1_train).float().softmax(
                         dim=-1) / self.temperature,
                     torch.from_numpy(self.get_preds(self.stage1_train_data)).float().softmax(
                         dim=-1).log() / self.temperature
                 ) * (self.lambda_param ** 2) * self.temperature
                 _kl2 = F.kl_div(
                     torch.from_numpy(self.get_preds(train_dataloader)).float().softmax(dim=-1) / self.temperature,
-                    torch.from_numpy(self.stage1_executor.get_preds(train_dataloader)).float().softmax(
+                    torch.from_numpy(s1_exec_pred_s2_train).float().softmax(
                         dim=-1).log() / self.temperature
                 ) * (self.lambda_param ** 2) * self.temperature
                 # "loss_st1_on_incr" and "loss_st1_on_raw" are const value, maybe they can be omitted.
@@ -207,14 +212,14 @@ class MyFormerExecutor(TrafficStateExecutor):
                 loss_st2_on_raw = self.get_huber_evaluation(test_dataloader=self.stage1_val_data)  # Z_g_raw
                 loss_st2_on_incr = val_loss  # Z_g_incr
                 _kl1 = F.kl_div(
-                    torch.from_numpy(self.stage1_executor.get_preds(self.stage1_val_data)).float().softmax(
+                    torch.from_numpy(s1_exec_pred_s1_val).float().softmax(
                         dim=-1) / self.temperature,
                     torch.from_numpy(self.get_preds(self.stage1_val_data)).float().softmax(
                         dim=-1).log() / self.temperature
                 ) * (self.lambda_param ** 2) * self.temperature
                 _kl2 = F.kl_div(
                     torch.from_numpy(self.get_preds(eval_dataloader)).float().softmax(dim=-1) / self.temperature,
-                    torch.from_numpy(self.stage1_executor.get_preds(eval_dataloader)).float().softmax(
+                    torch.from_numpy(s1_exec_pred_s2_val).float().softmax(
                         dim=-1).log() / self.temperature
                 ) * (self.lambda_param ** 2) * self.temperature
                 # "loss_st1_on_incr" and "loss_st1_on_raw" are const value, maybe they can be omitted.

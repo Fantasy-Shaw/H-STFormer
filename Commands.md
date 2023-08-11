@@ -1,4 +1,5 @@
-## Commands
+# Commands
+## Training
 ### PeMS04 Spatial-Temporal 60%
 ```shell
 python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04ST60Stage1 --exp_id pems04st60stage1 --is_quick_debug_mode True --config_file PeMS04
@@ -83,3 +84,4 @@ python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS08T
 ```shell
 python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS08T80Stage2 --is_stage2 True --stage1_exp_id pems08t80stage1 --stage_1_dataset PeMS08T80Stage1 --temperature 10.0 --lambda_parm 10.0 --exp_id pems08t80stage2 --is_quick_debug_mode True --config_file PeMS08_st2
 ```
+## Evaluating

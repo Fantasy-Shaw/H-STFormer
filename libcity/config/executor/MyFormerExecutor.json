@@ -26,7 +26,7 @@
     "clip_grad_norm": false,
     "max_grad_norm": 1.0,
     "use_early_stop": false,
-    "patience": 25,
+    "patience": 50,
     "log_level": "INFO",
     "log_every": 1,
     "saved_model": true,
