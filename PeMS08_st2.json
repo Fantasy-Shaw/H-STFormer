@@ -7,7 +7,7 @@
     "batch_size": 32,
     "add_time_in_day": true,
     "add_day_in_week": true,
-    "step_size": 2776,
+    "step_size": 600,
     "max_epoch": 200,
     "bidir": true,
     "far_mask_delta": 7,
