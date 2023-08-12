@@ -1,6 +1,6 @@
 # [Unknown Journal] Incremental Traffic Flow Prediction
 
-Code of H-STFormer with PyTorch2.0.
+Code of H-STFormer with PyTorch2.0. Based on [LibCity](https://github.com/LibCity/Bigscity-LibCity) framework.
 
 ## Highlights of This Work
 1. Implementation of FastDTW can use multiple CPU cores. Calculation of single node in PeMSD4 takes only about 10s with 8 CPU cores. (In contrast, single-core calculation takes 70s+.)
@@ -30,12 +30,12 @@ Generating PeMSD7 series dataset cache takes 120GB+ RAM.
 You can [download pre-generated dataset cache](https://pan.baidu.com/s/1ZqAomjk7HQR_LSlTXCTGsQ?pwd=0221 
 ) to skip this, and 80GB RAM may be enough for training.
 
-I provided the data in np.float16 and np.float64. After downloading the aforementioned files, please rename them
-and put into `libcity/cache/dataset_cache`.
+I provided the data in np.float32 and np.float64. (Note: Using np.float16 may cause **_loss=nan_**.) 
+After downloading the aforementioned files, please rename them as follows and put into `libcity/cache/dataset_cache`.
 
 Here is a renaming example:
 
-For `[np.float16]MyFormer_point_based_PeMS07ST80Stage1_12_12_0.6_1_0.2_standard_4_True_True_True_True_traffic_flow.npz`, 
+For `[np.float64]MyFormer_point_based_PeMS07ST80Stage1_12_12_0.6_1_0.2_standard_4_True_True_True_True_traffic_flow.npz`, 
 
 rename it to `MyFormer_point_based_PeMS07ST80Stage1_12_12_0.6_1_0.2_standard_[batch_size]_True_True_True_True_traffic_flow.npz`.
 

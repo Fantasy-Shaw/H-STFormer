@@ -1,3 +1,4 @@
+import gc
 import os
 import numpy as np
 import pandas as pd
@@ -88,6 +89,13 @@ class MyFormerDataset(TrafficStatePointDataset):
         self.raw_rel_dataframe = pd.read_csv(self.data_path + self.rel_file + '.rel')
         self._logger.info('Max adj_mx value = {}'.format(self.adj_mx.max()))
         self.sh_mx = self.adj_mx.copy()
+        sh_mx_file = '{}.npy'.format(self.dataset)
+        # If existed, won't calc again.
+        if os.path.exists(sh_mx_file):
+            self.sh_mx = np.load(sh_mx_file)
+            self._logger.info('Loaded existing file {}.npy'.format(self.dataset))
+            return
+        # Calc for the first time
         if self.type_short_path == 'hop':
             self.sh_mx[self.sh_mx > 0] = 1
             self.sh_mx[self.sh_mx == 0] = 511
@@ -103,7 +111,7 @@ class MyFormerDataset(TrafficStatePointDataset):
                     # with single process.
                     for j in range(self.num_nodes):
                         self.sh_mx[i, j] = min(self.sh_mx[i, j], self.sh_mx[i, k] + self.sh_mx[k, j], 511)
-            np.save('{}.npy'.format(self.dataset), self.sh_mx)
+            np.save(sh_mx_file, self.sh_mx)
 
     def _calculate_adjacency_matrix(self):
         # pool = Pool()
@@ -113,6 +121,13 @@ class MyFormerDataset(TrafficStatePointDataset):
         std = distances.std()
         self.adj_mx = np.exp(-np.square(self.adj_mx / std))
         self.adj_mx[self.adj_mx < self.weight_adj_epsilon] = 0
+        sd_mx_file = '{}_sd_mx.npy'.format(self.dataset)
+        # If existed, won't calc again.
+        if os.path.exists(sd_mx_file):
+            self.sd_mx = np.load(sd_mx_file)
+            self._logger.info('Loaded existing file {}_sd_mx.npy'.format(self.dataset))
+            return
+        # Calc for the first time
         if self.type_short_path == 'dist':
             self.sd_mx[self.adj_mx == 0] = np.inf
             for k in range(self.num_nodes):
@@ -125,6 +140,7 @@ class MyFormerDataset(TrafficStatePointDataset):
                     # with single process.
                     for j in range(self.num_nodes):
                         self.sd_mx[i, j] = min(self.sd_mx[i, j], self.sd_mx[i, k] + self.sd_mx[k, j])
+            np.save(sd_mx_file, self.sd_mx)
 
     def get_data(self):
         x_train, y_train, x_val, y_val, x_test, y_test = [], [], [], [], [], []
@@ -153,14 +169,6 @@ class MyFormerDataset(TrafficStatePointDataset):
             y_val[..., self.output_dim:] = self.ext_scaler.transform(y_val[..., self.output_dim:])
             x_test[..., self.output_dim:] = self.ext_scaler.transform(x_test[..., self.output_dim:])
             y_test[..., self.output_dim:] = self.ext_scaler.transform(y_test[..., self.output_dim:])
-        train_data = list(zip(x_train, y_train))
-        eval_data = list(zip(x_val, y_val))
-        test_data = list(zip(x_test, y_test))
-        self.train_dataloader, self.eval_dataloader, self.test_dataloader = \
-            generate_dataloader(train_data, eval_data, test_data, self.feature_name,
-                                self.batch_size, self.num_workers, pad_with_last_sample=self.pad_with_last_sample,
-                                distributed=self.distributed)
-        self.num_batches = len(self.train_dataloader)
         if self.is_quick_debug_mode and self.dataset[0:4] == "PeMS":
             # For quickly debugging, don't calculate pattern key.
             self.pattern_key_file = os.path.join(
@@ -189,6 +197,20 @@ class MyFormerDataset(TrafficStatePointDataset):
         else:
             self.pattern_keys = np.load(self.pattern_key_file + ".npy")
             self._logger.info("Loaded file " + self.pattern_key_file + ".npy")
+        train_data = list(zip(x_train, y_train))
+        del x_train, y_train
+        gc.collect()
+        eval_data = list(zip(x_val, y_val))
+        del x_val, y_val
+        gc.collect()
+        test_data = list(zip(x_test, y_test))
+        del x_test, y_test
+        gc.collect()
+        self.train_dataloader, self.eval_dataloader, self.test_dataloader = \
+            generate_dataloader(train_data, eval_data, test_data, self.feature_name,
+                                self.batch_size, self.num_workers, pad_with_last_sample=self.pad_with_last_sample,
+                                distributed=self.distributed)
+        self.num_batches = len(self.train_dataloader)
         return self.train_dataloader, self.eval_dataloader, self.test_dataloader
 
     def get_data_feature(self):

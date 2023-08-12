@@ -1,5 +1,21 @@
 # Commands
-## Training
+If using a GPU with 20GB+ GPU memory, you can try larger batch_size with `PeMS04_bs32.json`, `PeMS07_bs8.json` for **_normal training_**.
+
+Note: I found that _batch_size>=64_ may cause _loss=nan_ after some epochs.
+## Normal Training (Full, Non-Incremental)
+### PeMS04
+```shell
+python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04 --exp_id pems04 --is_quick_debug_mode True --config_file PeMS04
+```
+### PeMS07
+```shell
+python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS07 --exp_id pems07 --is_quick_debug_mode True --config_file PeMS07
+```
+### PeMS08
+```shell
+python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS08 --exp_id pems08 --is_quick_debug_mode True --config_file PeMS08
+```
+## Incremental Training
 ### PeMS04 Spatial-Temporal 60%
 ```shell
 python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04ST60Stage1 --exp_id pems04st60stage1 --is_quick_debug_mode True --config_file PeMS04

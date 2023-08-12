@@ -1,3 +1,4 @@
+import gc
 import os
 import pandas as pd
 import numpy as np
@@ -526,10 +527,9 @@ class TrafficStateDataset(AbstractDataset):
             y_t = df[t + y_offsets, ...]
             x.append(x_t)
             y.append(y_t)
-        x = np.stack(x, axis=0).astype(np.float16)  # use float16 if PeMS07
-        y = np.stack(y, axis=0).astype(np.float16)
-        # x = np.stack(x, axis=0)
-        # y = np.stack(y, axis=0)
+        # np.float16 will cause loss=nan. Default is np.float64, but PeMS07 takes too much mem.
+        x = np.stack(x, axis=0).astype(np.float32)
+        y = np.stack(y, axis=0).astype(np.float32)
         return x, y
 
     def _generate_data(self):
@@ -550,7 +550,11 @@ class TrafficStateDataset(AbstractDataset):
             x_list.append(x)
             y_list.append(y)
         x = np.concatenate(x_list)
+        del x_list
+        gc.collect()
         y = np.concatenate(y_list)
+        del y_list
+        gc.collect()
         self._logger.info("Dataset created")
         self._logger.info("x shape: " + str(x.shape) + ", y shape: " + str(y.shape))
         return x, y
