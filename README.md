@@ -33,7 +33,7 @@ Generating PeMSD7 series dataset cache takes 120GB+ RAM.
 You can [download pre-generated dataset cache](https://pan.baidu.com/s/1ZqAomjk7HQR_LSlTXCTGsQ?pwd=0221 
 ) to skip this, and 80GB RAM may be enough for training.
 
-That's not all datasets in all fata format, but it's enough.
+That's not all datasets in all formats, but it's enough to overcome the oom issue.
 
 I provided the data in `np.float32` **(recommended)** and `np.float64`. (Note: Using `np.float16` may cause `loss=nan`.) 
 After downloading the aforementioned files, please rename them as follows and put into `libcity/cache/dataset_cache`.
