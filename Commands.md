@@ -1,7 +1,7 @@
 # Commands
 If using a GPU with 20GB+ GPU memory, you can try larger batch_size with `PeMS04_bs32.json`, `PeMS07_bs8.json` for **_normal training_**.
 
-Note: I found that _batch_size>=64_ may cause _loss=nan_ after some epochs.
+Note: I found that `batch_size>=64` may cause `loss=nan` after some epochs.
 ## Normal Training (Full, Non-Incremental)
 ### PeMS04
 ```shell

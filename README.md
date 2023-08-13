@@ -12,6 +12,9 @@ Datasets for incremental training are randomly split from PeMS0x. You can use `P
 
 Or use mine, [download here](https://pan.baidu.com/s/1XkZb3cJFdi__XKczbdSr8g?pwd=0221).
 
+If you split the incremental datasets by yourself, you should delete all the `PeMS0x[ST/T][60/80]Stage[1/2].npy` under the root dir, 
+and let the program re-calculate them. That's because the reserved part of the road network has changed.
+
 ## Quick Start
 
 Use miniconda environment config file for [Ubuntu](env-py310-cuda117-ubuntu.yaml) or [Windows](env-py310-cuda118-windows.yaml) to create conda venv.
@@ -30,7 +33,9 @@ Generating PeMSD7 series dataset cache takes 120GB+ RAM.
 You can [download pre-generated dataset cache](https://pan.baidu.com/s/1ZqAomjk7HQR_LSlTXCTGsQ?pwd=0221 
 ) to skip this, and 80GB RAM may be enough for training.
 
-I provided the data in np.float32 and np.float64. (Note: Using np.float16 may cause **_loss=nan_**.) 
+That's not all datasets in all fata format, but it's enough.
+
+I provided the data in `np.float32` **(recommended)** and `np.float64`. (Note: Using `np.float16` may cause `loss=nan`.) 
 After downloading the aforementioned files, please rename them as follows and put into `libcity/cache/dataset_cache`.
 
 Here is a renaming example:
