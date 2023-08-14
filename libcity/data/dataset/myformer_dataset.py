@@ -39,6 +39,10 @@ class MyFormerDataset(TrafficStatePointDataset):
         self.cluster_method = config.get("cluster_method", "kshape")
         self.is_quick_debug_mode = config.get("is_quick_debug_mode", True)
 
+        self.train_dataloader: object = None
+        self.eval_dataloader: object = None
+        self.test_dataloader: object = None
+
         self.mp_i = 0
         self.mp_data_mean: np.ndarray = np.ndarray(shape=[3, 3, 3])
 

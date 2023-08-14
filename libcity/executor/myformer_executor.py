@@ -2,6 +2,9 @@ import time
 import numpy as np
 import torch
 import os
+
+from torch.cuda.amp import autocast, GradScaler
+
 from libcity.executor.scheduler import CosineLRScheduler
 from ray import tune
 from libcity.executor.traffic_state_executor import TrafficStateExecutor
@@ -285,6 +288,7 @@ class MyFormerExecutor(TrafficStateExecutor):
         # Force None
         loss_func = self.model.calculate_loss_without_predict
         losses = []
+        scaler = GradScaler()
         for batch in train_dataloader:
             batch.to_tensor(self.device)
             batch_lap_pos_enc = self.lap_mx.to(self.device)
@@ -294,18 +298,21 @@ class MyFormerExecutor(TrafficStateExecutor):
                 sign_flip[sign_flip < 0.5] = -1.0
                 batch_lap_pos_enc = batch_lap_pos_enc * sign_flip.unsqueeze(0)
             y_true = batch['y']
-            y_predicted = self.model(batch, batch_lap_pos_enc)
-            # print("y_true\n", y_true, "y_predicted\n", y_predicted)
-            loss = loss_func(y_true, y_predicted, batches_seen=batches_seen, set_loss=self.set_loss)
+            with autocast():
+                y_predicted = self.model(batch, batch_lap_pos_enc)
+                loss = loss_func(y_true, y_predicted, batches_seen=batches_seen, set_loss=self.set_loss)
             self._logger.debug(loss.item())
             losses.append(loss.item())
             batches_seen += 1
             loss = loss / self.grad_accmu_steps
-            loss.backward()
+            scaler.scale(loss).backward()
+            # loss.backward()
             if self.clip_grad_norm:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.max_grad_norm)
             if batches_seen % self.grad_accmu_steps == 0:
-                self.optimizer.step()
+                # self.optimizer.step()
+                scaler.step(self.optimizer)
+                scaler.update()
                 if self.lr_scheduler is not None:
                     if self.lr_scheduler_type.lower() == 'cosinelr':
                         self.lr_scheduler.step_update(num_updates=batches_seen)

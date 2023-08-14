@@ -1,13 +1,17 @@
 # Commands
-If using a GPU with 20GB+ GPU memory, you can try larger batch_size with `PeMS04_bs32.json`, `PeMS07_bs8.json` for **_normal training_**.
+If using a GPU with 20GB+ video memory, you can try larger batch_size with `PeMS04_bs32.json`, `PeMS07_bs6.json` for **_normal training_**.
+Specifically, use `--config_file PeMS04_bs32` or `--config_file PeMS07_bs6` instead of the default ones.
 
-Note: I found that `batch_size>=64` may cause `loss=nan` after some epochs.
+Note: I found that `batch_size>=64` on PeMS08 and `batch_size>=8` on PeMS04 may cause `loss=nan` after some epochs.
+You can try smaller `batch_size` or disable `torch.cuda.amp`.
 ## Normal Training (Full, Non-Incremental)
 ### PeMS04
 ```shell
 python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS04 --exp_id pems04 --is_quick_debug_mode True --config_file PeMS04
 ```
 ### PeMS07
+This one takes massive memory. If using dataset cache files: 80GB RAM + 24GB Video Memory for `batch_size=6,8` and 
+120GB RAM + 11GB Video Memory for `batch_size=4`, or you need 150GB+ RAM.
 ```shell
 python run_model.py --task traffic_state_pred --model MyFormer --dataset PeMS07 --exp_id pems07 --is_quick_debug_mode True --config_file PeMS07
 ```

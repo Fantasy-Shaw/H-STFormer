@@ -33,6 +33,9 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
         logger = get_logger(stage1_config)
         logger.info("This is an incremental stage of training.")
         stage1_config['exp_id'] = stage1_config.get('stage1_exp_id', default=None)
+        # Default values are 0.6, 0.2
+        stage1_config["train_rate"] = 0.1
+        stage1_config["eval_rate"] = 0.1
         stage1_dataset = get_dataset(stage1_config)
         s1_train_data, s1_valid_data, s1_test_data = stage1_dataset.get_data()
         stage1_data_feature = stage1_dataset.get_data_feature()
@@ -108,19 +111,20 @@ def run_model(task=None, model_name=None, dataset_name=None, config_file=None,
                 format(str(task), str(model_name), str(dataset_name), str(exp_id)))
     logger.info(config.config)
     dataset = get_dataset(config)
-    train_data, valid_data, test_data = dataset.get_data()
+    # train_data, valid_data, test_data = dataset.get_data()
+    dataset.get_data()
     data_feature = dataset.get_data_feature()
     model_cache_file = './libcity/cache/{}/model_cache/{}_{}.m'.format(
         exp_id, model_name, dataset_name)
     model = get_model(config, data_feature)
     executor = get_executor(config, model)
     if train or not os.path.exists(model_cache_file):
-        executor.train(train_data, valid_data)
+        executor.train(dataset.train_dataloader, dataset.eval_dataloader)
         if saved_model:
             executor.save_model(model_cache_file)
     else:
         executor.load_model(model_cache_file)
-    executor.evaluate(test_data)
+    executor.evaluate(dataset.test_dataloader)
 
 
 def parse_search_space(space_file):

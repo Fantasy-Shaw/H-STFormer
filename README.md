@@ -1,6 +1,8 @@
-# [Unknown Journal] Incremental Traffic Flow Prediction
+# [Unknown Journal] Hub-Aware Spatial-Temporal Long-Range Transformer for Incremental Traffic Flow Prediction
 
 Code of H-STFormer with PyTorch2.0. Based on [LibCity](https://github.com/LibCity/Bigscity-LibCity) framework.
+
+MyFormer is an alias of H-STFormer.
 
 ## Highlights of This Work
 1. Implementation of FastDTW can use multiple CPU cores. Calculation of single node in PeMSD4 takes only about 10s with 8 CPU cores. (In contrast, single-core calculation takes 70s+.)

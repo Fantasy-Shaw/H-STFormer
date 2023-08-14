@@ -547,6 +547,8 @@ class TrafficStateDataset(AbstractDataset):
             if self.load_external:
                 df = self._add_external_information(df, ext_data)
             x, y = self._generate_input_data(df)
+            del df
+            gc.collect()
             x_list.append(x)
             y_list.append(y)
         x = np.concatenate(x_list)
