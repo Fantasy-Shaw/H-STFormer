@@ -1,3 +1,4 @@
+import gc
 import os
 from ray import tune
 # from ray.tune.suggest.hyperopt import HyperOptSearch
@@ -37,14 +38,15 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
         stage1_config["train_rate"] = 0.1
         stage1_config["eval_rate"] = 0.1
         stage1_dataset = get_dataset(stage1_config)
-        s1_train_data, s1_valid_data, s1_test_data = stage1_dataset.get_data()
+        stage1_dataset.get_data()
         stage1_data_feature = stage1_dataset.get_data_feature()
         stage1_model_cache_file = './libcity/cache/{}/model_cache/{}_{}.m'.format(
             stage1_exp_id, model_name, stage1_dataset_name)
         if not os.path.exists(stage1_model_cache_file):
             logger.error(
-                "Stage1-model-cache file does not exist. Loading and training exited. stage1_model_cache_file={}",
-                stage1_model_cache_file)
+                "Stage1-model-cache file does not exist. \
+                Loading and training exited. stage1_model_cache_file={}".format(stage1_model_cache_file)
+            )
             return
         stage1_model = get_model(stage1_config, stage1_data_feature)
         stage1_executor = get_executor(stage1_config, stage1_model)
@@ -75,10 +77,13 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
         model = get_model(stage2_config, data_feature)
         # For St2 Exec
         loss_st1_on_incr = stage1_executor.get_huber_evaluation(s2_train_data)  # Z_f0_incr
-        loss_st1_on_raw = stage1_executor.get_huber_evaluation(s1_test_data)  # Z_f0_raw
+        loss_st1_on_raw = stage1_executor.get_huber_evaluation(stage1_dataset.test_dataloader)  # Z_f0_raw
+        # s1-test_dataloader is not used anymore, this will free the used memory.
+        stage1_dataset.test_dataloader = None
         logger.info("Huber loss of stage1-model on incremental data: loss_st1_on_incr={}.".format(loss_st1_on_incr))
         executor = get_executor(stage2_config, model, is_MyFormerExec=True,
-                                stage1_train_data=s1_train_data, stage1_val_data=s1_valid_data,
+                                stage1_train_data=stage1_dataset.train_dataloader,
+                                stage1_val_data=stage1_dataset.eval_dataloader,
                                 stage1_executor=stage1_executor,
                                 loss_st1_on_raw=loss_st1_on_raw, loss_st1_on_incr=loss_st1_on_incr)
         if train or not os.path.exists(model_cache_file):
