@@ -12,7 +12,8 @@ MyFormer is an alias of H-STFormer.
 ## Dataset
 Datasets for incremental training are randomly split from PeMS0x. You can use `PreProcess/GenerateDatasets.py` to generate them.
 
-Or use mine, [download here](https://pan.baidu.com/s/1XkZb3cJFdi__XKczbdSr8g?pwd=0221).
+Or use mine, [download with BaiduNetDisk](https://pan.baidu.com/s/1XkZb3cJFdi__XKczbdSr8g?pwd=0221) or
+[Google Drive](https://drive.google.com/file/d/1ozKxML4OVF2GQCDOzIa9r0FGS8j1w0tf/view?usp=sharing).
 
 If you split the incremental datasets by yourself, you should delete all the `PeMS0x[ST/T][60/80]Stage[1/2].npy` under the root dir, 
 and all the `dtw_PeMS0x[ST/T][60/80]Stage[1/2].npy` under `libcity/cache/dataset_cache` and then let the program re-calculate them.
