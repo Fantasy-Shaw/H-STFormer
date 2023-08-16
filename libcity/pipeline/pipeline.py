@@ -38,8 +38,8 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
         logger.info("This is an incremental stage of training.")
         stage1_config['exp_id'] = stage1_config.get('stage1_exp_id', default=None)
         # Default values are 0.6, 0.2
-        stage1_config["train_rate"] = 0.1
-        stage1_config["eval_rate"] = 0.1
+        # stage1_config["train_rate"] = 0.1
+        # stage1_config["eval_rate"] = 0.1
         stage1_dataset = get_dataset(stage1_config)
         stage1_dataset.get_data()
         stage1_data_feature = stage1_dataset.get_data_feature()

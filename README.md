@@ -1,4 +1,4 @@
-# [Unknown Journal] Hub-Aware Spatial-Temporal Long-Range Transformer for Incremental Traffic Flow Prediction
+# Hub-Aware Spatial-Temporal Long-Range Transformer for Incremental Traffic Flow Prediction
 
 Code of H-STFormer with PyTorch2.0. Based on [LibCity](https://github.com/LibCity/Bigscity-LibCity) framework.
 
@@ -24,8 +24,10 @@ Use miniconda environment config file for [Ubuntu](env-py310-cuda117-ubuntu.yaml
 
 Commands for each experiment are available [here](Commands.md).
 
-Besides, I also provided commands for spatial-temporal incremental tasks, these tasks amount to learning on a dynamically
-increasing road network. They are not that SOTA and aren't written into the paper. If needed, click [here](Legacy-STIncrementalCommands.md).
+The aforementioned incremental commands are temporal-only incremental. 
+Besides, I also provided commands for spatial-temporal incremental tasks, these are amount to learning on a dynamically
+increasing road network. They are not that SOTA and aren't written into the paper. 
+If needed, click [here](Legacy-STIncrementalCommands.md).
 
 ## Recommended Hardware Env
 Intel or AMD x86_64-arch, 8 CPU cores or more;
