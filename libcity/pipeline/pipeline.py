@@ -47,8 +47,8 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
             stage1_exp_id, model_name, stage1_dataset_name)
         if not os.path.exists(stage1_model_cache_file):
             logger.error(
-                "Stage1-model-cache file does not exist. \
-                Loading and training exited. stage1_model_cache_file={}".format(stage1_model_cache_file)
+                "Stage1-model-cache file does not exist. " +
+                "Loading and training exited. stage1_model_cache_file={}".format(stage1_model_cache_file)
             )
             return
         stage1_model = get_model(stage1_config, stage1_data_feature)
