@@ -23,9 +23,12 @@ from libcity.utils import get_executor, get_model, get_logger, ensure_dir
 
 def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=None,
                    saved_model=True, train=True, other_args=None,
-                   is_stage2=False, stage1_exp_id=None, stage1_dataset_name=None):
+                   is_stage2=False, stage1_exp_id=None, stage1_dataset_name=None,
+                   stage2_dataset_name=None  # s2-dataset-name is only for eval
+                   ):
     if not is_stage2:
-        run_model(task, model_name, dataset_name, config_file, saved_model, train, other_args)
+        run_model(task, model_name, dataset_name, config_file, saved_model, train, other_args,
+                  stage2_dataset_name=stage2_dataset_name)
     else:
         stage1_config = ConfigParser(
             task=task, model=model_name, dataset=stage1_dataset_name, config_file=config_file,
@@ -96,7 +99,9 @@ def run_incr_model(task=None, model_name=None, dataset_name=None, config_file=No
 
 
 def run_model(task=None, model_name=None, dataset_name=None, config_file=None,
-              saved_model=True, train=True, other_args=None):
+              saved_model=True, train=True, other_args=None,
+              stage2_dataset_name=None  # s2-dataset-name is only for eval
+              ):
     config = ConfigParser(task, model_name, dataset_name,
                           config_file, saved_model, train, other_args)
     exp_id = config.get('exp_id', None)
@@ -119,8 +124,12 @@ def run_model(task=None, model_name=None, dataset_name=None, config_file=None,
     # train_data, valid_data, test_data = dataset.get_data()
     dataset.get_data()
     data_feature = dataset.get_data_feature()
-    model_cache_file = './libcity/cache/{}/model_cache/{}_{}.m'.format(
-        exp_id, model_name, dataset_name)
+    if stage2_dataset_name is None:
+        model_cache_file = './libcity/cache/{}/model_cache/{}_{}.m'.format(
+            exp_id, model_name, dataset_name)
+    else:
+        model_cache_file = './libcity/cache/{}/model_cache/{}_{}.m'.format(
+            exp_id, model_name, stage2_dataset_name)
     model = get_model(config, data_feature)
     executor = get_executor(config, model)
     if train or not os.path.exists(model_cache_file):

@@ -57,6 +57,8 @@ if __name__ == '__main__':
     parser.add_argument('--is_quick_debug_mode', type=str2bool,
                         default=False,
                         help="If enabled, using quick-debug-mode, no calculating clustering pattern key.")
+    parser.add_argument('--stage2_dataset_name', type=str,
+                        default=None, help='This is only used if evaluating an incremental model.')
     add_other_args(parser)
     args = parser.parse_args()
     dict_args = vars(args)
@@ -68,4 +70,5 @@ if __name__ == '__main__':
     run_incr_model(task=args.task, model_name=args.model, dataset_name=args.dataset,
                    config_file=args.config_file, saved_model=args.saved_model,
                    train=args.train, other_args=other_args, is_stage2=args.is_stage2,
-                   stage1_exp_id=args.stage1_exp_id, stage1_dataset_name=args.stage_1_dataset)
+                   stage1_exp_id=args.stage1_exp_id, stage1_dataset_name=args.stage_1_dataset,
+                   stage2_dataset_name=args.stage2_dataset_name)
