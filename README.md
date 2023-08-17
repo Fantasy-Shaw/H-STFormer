@@ -26,7 +26,7 @@ Use miniconda environment config file for [Ubuntu](env-py310-cuda117-ubuntu.yaml
 Commands for each experiment are available [here](Commands.md).
 
 The aforementioned incremental commands are temporal-only incremental. 
-Besides, I also provided commands for spatial-temporal incremental tasks, these are amount to learning on a dynamically
+Besides, I also provided commands for spatial-temporal incremental tasks, which amount to learning on a dynamically
 increasing road network. They are not that SOTA and aren't written into the paper. 
 If needed, click [here](Legacy-STIncrementalCommands.md).
 
