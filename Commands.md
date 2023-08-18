@@ -2,7 +2,7 @@
 If using a GPU with 20GB+ video memory, you can try larger batch_size with `PeMS04_bs32.json`, `PeMS07_bs6.json` for **_normal training_**.
 Specifically, use `--config_file PeMS04_bs32` or `--config_file PeMS07_bs6` instead of the default ones.
 
-Note: I found that `batch_size>=64` on PeMS08 and `batch_size>=8` on PeMS04 may cause `loss=nan` after some epochs.
+Note: I found that `batch_size>=64` on PeMS08 and `batch_size>=8` on PeMS07 may cause `loss=nan` after some epochs.
 You can try smaller `batch_size` or disable `torch.cuda.amp`.
 ## Normal Training (Full, Non-Incremental)
 ### PeMS04
