@@ -124,7 +124,6 @@ class STSelfAttention(nn.Module):
             qkv_bias=False, attn_drop=0., proj_drop=0., device=torch.device('cpu'), output_dim=1,
     ):
         super().__init__()
-        print(dim, geo_num_heads, sem_num_heads, t_num_heads, hub_num_heads)
         assert dim % (geo_num_heads + sem_num_heads + hub_num_heads + t_num_heads) == 0
         self.geo_num_heads = geo_num_heads
         self.sem_num_heads = sem_num_heads
