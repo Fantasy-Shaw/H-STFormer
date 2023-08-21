@@ -312,7 +312,7 @@ class MyFormerExecutor(TrafficStateExecutor):
             if batches_seen % self.grad_accmu_steps == 0:
                 # self.optimizer.step()
                 scaler.step(self.optimizer)
-                scaler.update()
+                scaler.update()  # This should be only used after scaler.step(optimizer).
                 if self.lr_scheduler is not None:
                     if self.lr_scheduler_type.lower() == 'cosinelr':
                         self.lr_scheduler.step_update(num_updates=batches_seen)
