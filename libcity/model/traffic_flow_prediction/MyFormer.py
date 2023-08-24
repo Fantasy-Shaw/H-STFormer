@@ -151,24 +151,24 @@ class STSelfAttention(nn.Module):
             nn.Linear(dim, int(dim * self.geo_ratio)) for _ in range(output_dim)
         ])
 
-        self.geo_q_conv = nn.Conv2d(dim, int(dim * self.geo_ratio), kernel_size=1, bias=qkv_bias)
-        self.geo_k_conv = nn.Conv2d(dim, int(dim * self.geo_ratio), kernel_size=1, bias=qkv_bias)
-        self.geo_v_conv = nn.Conv2d(dim, int(dim * self.geo_ratio), kernel_size=1, bias=qkv_bias)
+        self.geo_q_conv, self.geo_k_conv, self.geo_v_conv = (
+                [nn.Conv2d(dim, int(dim * self.geo_ratio), kernel_size=1, bias=qkv_bias)] * 3
+        )
         self.geo_attn_drop = nn.Dropout(attn_drop)
 
-        self.sem_q_conv = nn.Conv2d(dim, int(dim * self.sem_ratio), kernel_size=1, bias=qkv_bias)
-        self.sem_k_conv = nn.Conv2d(dim, int(dim * self.sem_ratio), kernel_size=1, bias=qkv_bias)
-        self.sem_v_conv = nn.Conv2d(dim, int(dim * self.sem_ratio), kernel_size=1, bias=qkv_bias)
+        self.sem_q_conv, self.sem_k_conv, self.sem_v_conv = (
+                [nn.Conv2d(dim, int(dim * self.sem_ratio), kernel_size=1, bias=qkv_bias)] * 3
+        )
         self.sem_attn_drop = nn.Dropout(attn_drop)
 
-        self.hub_q_conv = nn.Conv2d(dim, int(dim * self.hub_ratio), kernel_size=1, bias=qkv_bias)
-        self.hub_k_conv = nn.Conv2d(dim, int(dim * self.hub_ratio), kernel_size=1, bias=qkv_bias)
-        self.hub_v_conv = nn.Conv2d(dim, int(dim * self.hub_ratio), kernel_size=1, bias=qkv_bias)
+        self.hub_q_conv, self.hub_k_conv, self.hub_v_conv = (
+                [nn.Conv2d(dim, int(dim * self.hub_ratio), kernel_size=1, bias=qkv_bias)] * 3
+        )
         self.hub_attn_drop = nn.Dropout(attn_drop)
 
-        self.t_q_conv = nn.Conv2d(dim, int(dim * self.t_ratio), kernel_size=1, bias=qkv_bias)
-        self.t_k_conv = nn.Conv2d(dim, int(dim * self.t_ratio), kernel_size=1, bias=qkv_bias)
-        self.t_v_conv = nn.Conv2d(dim, int(dim * self.t_ratio), kernel_size=1, bias=qkv_bias)
+        self.t_q_conv, self.t_k_conv, self.t_v_conv = (
+                [nn.Conv2d(dim, int(dim * self.t_ratio), kernel_size=1, bias=qkv_bias)] * 3
+        )
         self.t_attn_drop = nn.Dropout(attn_drop)
 
         self.proj = nn.Linear(dim, dim)
