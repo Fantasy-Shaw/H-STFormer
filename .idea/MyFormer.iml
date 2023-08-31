@@ -11,7 +11,7 @@
       <excludeFolder url="file://$MODULE_DIR$/raw_data/T-Drive" />
       <excludeFolder url="file://$MODULE_DIR$/raw_data/__PreProcessOutput" />
     </content>
-    <orderEntry type="jdk" jdkName="libcity" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="D:\SDK\miniconda3\envs\libcity" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>
