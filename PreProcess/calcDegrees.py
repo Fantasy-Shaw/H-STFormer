@@ -8,6 +8,13 @@ import matplotlib.pyplot as plt
 from brokenaxes import brokenaxes
 
 
+class Node:
+    def __init__(self, node_id):
+        self.node_id = node_id
+        self.neighbor_num = 0
+        self.neighbors = set()
+
+
 class DegreeStatistics:
     def __init__(self):
         self.fullGeoFile: str = os.path.join("..", r"raw_data\PeMS07\PeMS07.geo")
@@ -19,6 +26,8 @@ class DegreeStatistics:
         self.roadFigOutPut: str = os.path.join("..", r"raw_data\PeMS07\PeMS07_RoadStat.jpg")
         self.fullGeo: pd.DataFrame = pd.read_csv(self.fullGeoFile, index_col="geo_id")
         self.fullRel: pd.DataFrame = pd.read_csv(self.fullRelFile, index_col="rel_id")
+        # 节点邻居统计
+        self.nodeMap = {}
         # 入度
         self.posDegMap = dict(zip(self.fullGeo.index, [0] * len(self.fullGeo.index)))
         # 出度
@@ -35,6 +44,26 @@ class DegreeStatistics:
             self.negDegMap[dst] += 1
             self.degMap[src] += 1
             self.degMap[dst] += 1
+            try:
+                src_node = self.nodeMap[src]
+            except KeyError:
+                src_node = Node(src)
+                self.nodeMap[src] = src_node
+            try:
+                dst_node = self.nodeMap[dst]
+            except KeyError:
+                dst_node = Node(dst)
+                self.nodeMap[dst] = dst_node
+            src_node.neighbor_num += 1
+            src_node.neighbors.add(dst)
+            dst_node.neighbor_num += 1
+            dst_node.neighbors.add(src)
+
+        sorted_nodes = sorted(list(self.nodeMap.values()), key=lambda x: x.neighbor_num, reverse=True)
+
+        for i in range(len(sorted_nodes)):
+            print(sorted_nodes[i].node_id, sorted_nodes[i].neighbor_num, sorted_nodes[i].neighbors)
+
         self.nodeDegs = pd.concat([pd.DataFrame([self.degMap]), pd.DataFrame([self.posDegMap]),
                                    pd.DataFrame([self.negDegMap])], sort=False).T
         self.nodeDegs.columns = ['deg', 'pos_deg', 'neg_deg']
