@@ -344,7 +344,9 @@ class MyFormerExecutor(TrafficStateExecutor):
             return mean_loss
 
     def evaluate(self, test_dataloader):
-        self._logger.info('Start evaluating ...')
+        infer_start_time = time.time()
+        self._logger.info('Start evaluating at {}...'.format(time.strftime("%Y_%m_%d_%H_%M_%S",
+                                                                           time.localtime(infer_start_time))))
         with torch.no_grad():
             self.model.eval()
             y_truths = []
@@ -365,6 +367,9 @@ class MyFormerExecutor(TrafficStateExecutor):
             np.savez_compressed(os.path.join(self.evaluate_res_dir, filename), **outputs)
             self.evaluator.clear()
             self.evaluator.collect({'y_true': torch.tensor(y_truths), 'y_pred': torch.tensor(y_preds)})
+            infer_end_time = time.time()
+            self._logger.info('End evaluating at {}...'.format(time.strftime("%Y_%m_%d_%H_%M_%S",
+                                                                             time.localtime(infer_end_time))))
             test_result = self.evaluator.save_result(self.evaluate_res_dir)
             return test_result
 
