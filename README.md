@@ -1,4 +1,4 @@
-# Hub-Aware Spatial-Temporal Long-Range Transformer for Traffic Flow Prediction
+# Transport-Hub-Aware Spatial-Temporal Long-Range Graph Transformer for Traffic Flow Prediction
 
 Code of H-STFormer with PyTorch2.0. Based on [LibCity](https://github.com/LibCity/Bigscity-LibCity) framework.
 
