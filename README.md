@@ -7,7 +7,7 @@ MyFormer is an alias of H-STFormer.
 ## Highlights of This Work
 1. Implementation of FastDTW can use multiple CPU cores. Calculation of single node in PeMSD4 takes only about 10s with 8 CPU cores. (In contrast, single-core calculation takes 70s+.)
 2. HubSSA, mining potential traffic hubs on the road network. (Idea by Lei Zhang, implementation and improvements by Xiao Xu.)
-3. The first attempt on incremental learning of traffic flow prediction. We designed a Spatial-Temporal Knowledge Distillation Module for Stage-2 training (the incremental stage). (Idea and impl by Xiao Xu)
+3. The first attempt on incremental learning of traffic flow prediction. We designed a Spatial-Temporal Knowledge Distillation Module for Stage-2 training (the incremental stage). (Idea and implementation by Xiao Xu)
 
 ## Dataset
 Datasets for incremental training are randomly split from PeMS0x. You can use `PreProcess/GenerateDatasets.py` to generate them.
@@ -33,16 +33,16 @@ If needed, click [here](Legacy-STIncrementalCommands.md).
 ## Recommended Hardware Env
 Intel or AMD x86_64-arch, 8 CPU cores or more;
 
-at least 80GB RAM (128GB recommended);
+80GB RAM (128GB recommended);
 
-NVIDIA Geforce RTX 2080Ti or better (at least 11GB Video Memory for PeMSD7 Series)
+NVIDIA GeForce RTX 2080Ti or better (at least 11GB Video Memory for PeMSD7 Series)
 
 ## Pre-generated Dataset Cache
 Generating PeMSD7 series dataset cache takes 120GB+ RAM.
 You can [download pre-generated dataset cache](https://pan.baidu.com/s/1ZqAomjk7HQR_LSlTXCTGsQ?pwd=0221 
 ) to skip this, and 80GB RAM may be enough for training.
 
-That's not all datasets in all formats, but it's enough to overcome the oom issue.
+There are not all datasets in all formats, but it's enough to overcome the OOM issue.
 
 I provided the data in `np.float32` **(recommended)** and `np.float64`. (Note: Using `np.float16` may cause `loss=nan`.) 
 After downloading the aforementioned files, please rename them as follows and put into `libcity/cache/dataset_cache`.
