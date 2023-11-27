@@ -259,48 +259,6 @@ class Mlp(nn.Module):
         return x
 
 
-class TemporalSelfAttention(nn.Module):
-    def __init__(
-            self, dim, dim_out, t_attn_size, t_num_heads=6, qkv_bias=False,
-            attn_drop=0., proj_drop=0., device=torch.device('cpu'),
-    ):
-        super().__init__()
-        assert dim % t_num_heads == 0
-        self.t_num_heads = t_num_heads
-        self.head_dim = dim // t_num_heads
-        self.scale = self.head_dim ** -0.5
-        self.device = device
-        self.t_attn_size = t_attn_size
-
-        self.t_q_conv = nn.Conv2d(dim, dim, kernel_size=1, bias=qkv_bias)
-        self.t_k_conv = nn.Conv2d(dim, dim, kernel_size=1, bias=qkv_bias)
-        self.t_v_conv = nn.Conv2d(dim, dim, kernel_size=1, bias=qkv_bias)
-        self.t_attn_drop = nn.Dropout(attn_drop)
-
-        self.proj = nn.Linear(dim, dim_out)
-        self.proj_drop = nn.Dropout(proj_drop)
-
-    def forward(self, x):
-        B, T, N, D = x.shape
-        t_q = self.t_q_conv(x.permute(0, 3, 1, 2)).permute(0, 3, 2, 1)
-        t_k = self.t_k_conv(x.permute(0, 3, 1, 2)).permute(0, 3, 2, 1)
-        t_v = self.t_v_conv(x.permute(0, 3, 1, 2)).permute(0, 3, 2, 1)
-        t_q = t_q.reshape(B, N, T, self.t_num_heads, self.head_dim).permute(0, 1, 3, 2, 4)
-        t_k = t_k.reshape(B, N, T, self.t_num_heads, self.head_dim).permute(0, 1, 3, 2, 4)
-        t_v = t_v.reshape(B, N, T, self.t_num_heads, self.head_dim).permute(0, 1, 3, 2, 4)
-
-        t_attn = (t_q @ t_k.transpose(-2, -1)) * self.scale
-
-        t_attn = t_attn.softmax(dim=-1)
-        t_attn = self.t_attn_drop(t_attn)
-
-        t_x = (t_attn @ t_v).transpose(2, 3).reshape(B, N, T, D).transpose(1, 2)
-
-        x = self.proj(t_x)
-        x = self.proj_drop(x)
-        return x
-
-
 class STEncoderBlock(nn.Module):
 
     def __init__(

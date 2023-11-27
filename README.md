@@ -6,7 +6,7 @@ MyFormer is an alias of H-STFormer.
 
 ## Highlights of This Work
 1. Implementation of FastDTW can use multiple CPU cores. Calculation of single node in PeMSD4 takes only about 10s with 8 CPU cores. (In contrast, single-core calculation takes 70s+.)
-2. HubSSA, mining potential traffic hubs on the road network. (Idea by Lei Zhang, implementation and improvements by Xiao Xu.)
+2. HubSSA, indicating potential traffic hubs on the road network. (Idea by Lei Zhang, implementation and improvements by Xiao Xu.)
 3. The first attempt on incremental learning of traffic flow prediction. We designed a Spatial-Temporal Knowledge Distillation Module for Stage-2 training (the incremental stage). (Idea and implementation by Xiao Xu)
 
 ## Dataset
@@ -26,7 +26,7 @@ Use miniconda environment config file for [Ubuntu](env-py310-cuda117-ubuntu.yaml
 Commands for each experiment are available [here](Commands.md).
 
 The aforementioned incremental commands are temporal-only incremental. 
-Besides, I also provided commands for spatial-temporal incremental tasks, which amount to learning on a dynamically
+Besides, I also provide commands for spatial-temporal incremental tasks, which amounts to learning on a dynamically
 increasing road network. They are not that SOTA and aren't written into the paper. 
 If needed, click [here](Legacy-STIncrementalCommands.md).
 
@@ -44,7 +44,7 @@ You can [download pre-generated dataset cache](https://pan.baidu.com/s/1ZqAomjk7
 
 There are not all datasets in all formats, but it's enough to overcome the OOM issue.
 
-I provided the data in `np.float32` **(recommended)** and `np.float64`. (Note: Using `np.float16` may cause `loss=nan`.) 
+I provide the data in `np.float32` **(recommended)** and `np.float64`. (Note: Using `np.float16` may cause `loss=nan`.) 
 After downloading the aforementioned files, please rename them as follows and put into `libcity/cache/dataset_cache`.
 
 Here is a renaming example:
